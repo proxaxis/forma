@@ -1,0 +1,13 @@
+{
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "files.eol": "\r\n",
+  "files.insertFinalNewline": true,
+  "editor.formatOnSave": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.renderWhitespace": "boundary",
+  "files.autoSave": "afterDelay",
+  "explorer.compactFolders": false,
+  "editor.minimap.enabled": false,
+  "editor.wordSeparators": "./()\"'-:,.;<>~!@#$%^&*|+=[]{}`~?　、。・「」【】『』（）／！？てにをはがのともへでや"
+}
