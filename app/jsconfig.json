@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ES2022",
+    "checkJs": true,
+    "lib": ["ES2022"],
+    "ignoreDeprecations": "6.0",
+    "types": ["node", "mocha", "vscode", "vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*", "vite.config.js"],
+  "exclude": ["node_modules", "dist"]
+}

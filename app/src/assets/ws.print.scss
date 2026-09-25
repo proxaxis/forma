@@ -1,0 +1,82 @@
+@page {
+  size: A4;
+  margin: 18mm;
+}
+
+html {
+  background: #e8e8e8;
+}
+
+body {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 18mm 18mm 20mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: #111;
+  font-family: 'Yu Gothic', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+@media screen {
+  body {
+    margin-top: 24px;
+    margin-bottom: 24px;
+  }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+p,
+blockquote,
+pre,
+ul,
+ol,
+figure,
+img,
+table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+code,
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+a {
+  color: inherit;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1.5em 0;
+}
+
+.page-break,
+[style*='page-break-after: always'],
+[style*='break-after: page'] {
+  display: block;
+  page-break-after: always;
+  break-after: page;
+  height: 0;
+  overflow: hidden;
+}

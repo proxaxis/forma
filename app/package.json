@@ -1,0 +1,122 @@
+{
+  "name": "forma",
+  "displayName": "Forma",
+  "description": "Let's create documents in Markdown!",
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.136.0"
+  },
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "forma.preview",
+        "title": "MD: Open Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "forma.export",
+        "title": "MD: Export PDF",
+        "icon": "$(file-pdf)"
+      },
+      {
+        "command": "forma.initprojectconfig",
+        "title": "MD: Initialize Forma Project Config"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "forma.preview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "forma.export",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Forma",
+      "properties": {
+        "forma.theme": {
+          "type": "object",
+          "description": "Theme files available to Forma.",
+          "default": {
+            "entry": "default.scss",
+            "libraries": [
+              { "name": "print", "path": "this-is-reserved-name" }
+            ]
+          }
+        },
+        "forma.parser": {
+          "type": "object",
+          "default": {
+            "entry": "parser.js",
+            "libraries": []
+          },
+          "description": "Parser hooks available to Forma."
+        },
+        "forma.puppeteer": {
+          "type": "object",
+          "default": {
+            "entry": "puppeteer.json",
+            "libraries": [],
+            "puppeteerRunnerPath": ""
+          },
+          "description": "PDF presets and Chromium settings for Forma."
+        },
+        "forma.common.useAutoOpenPDF": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the exported PDF after it is created."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "lint": "eslint src test eslint.config.mjs",
+    "pretest": "npm run lint && npm run build",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/vscode": "^1.136.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "eslint": "^10.5.0",
+    "globals": "^17.12.0",
+    "vite": "^7.1.4"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "github-slugger": "^2.0.0",
+    "gray-matter": "^4.0.3",
+    "markdown-it": "^15.0.1",
+    "markdown-it-anchor": "^9.2.1",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-custom-block": "^1.0.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-imsize": "^2.0.1",
+    "markdown-it-link-attributes": "^4.0.1",
+    "markdown-it-task-lists": "^2.1.1",
+    "prismjs": "^1.30.0",
+    "puppeteer-core": "^25.10.0",
+    "sass": "^1.104.0"
+  }
+}
