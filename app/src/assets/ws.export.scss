@@ -1,44 +1,73 @@
-@page {
-  size: var(--forma-page-format, A4);
-  margin: var(--forma-page-margin-top, 18mm) var(--forma-page-margin-right, 18mm) var(--forma-page-margin-bottom, 18mm) var(--forma-page-margin-left, 18mm);
-}
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap");
 
-html,
-body {
+$text-color-0: #686868;
+$text-color-1: #333333;
+$text-color-inline-code: #d6336c;
+$bg-color-0: #e0e0e0;
+$bg-color-1: #adadad;
+$bg-color-9: #ffffff;
+$border-color: #acacac;
+$border-radius: 0.3rem;
+$text-size-base: 16px;
+$text-line-height: 1.5;
+
+$icon-play: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M187.2 100.9C174.8 94.1 159.8 94.4 147.6 101.6C135.4 108.8 128 121.9 128 136L128 504C128 518.1 135.5 531.2 147.6 538.4C159.7 545.6 174.8 545.9 187.2 539.1L523.2 355.1C536 348.1 544 334.6 544 320C544 305.4 536 291.9 523.2 284.9L187.2 100.9z" /></svg>');
+$icon-circle-info: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>');
+$icon-circle-check: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM438 209.7C427.3 201.9 412.3 204.3 404.5 215L285.1 379.2L233 327.1C223.6 317.7 208.4 317.7 199.1 327.1C189.8 336.5 189.7 351.7 199.1 361L271.1 433C276.1 438 282.9 440.5 289.9 440C296.9 439.5 303.3 435.9 307.4 430.2L443.3 243.2C451.1 232.5 448.7 217.5 438 209.7z"/></svg>');
+$icon-triangle-exclamation: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M320 64C334.7 64 348.2 72.1 355.2 85L571.2 485C577.9 497.4 577.6 512.4 570.4 524.5C563.2 536.6 550.1 544 536 544L104 544C89.9 544 76.8 536.6 69.6 524.5C62.4 512.4 62.1 497.4 68.8 485L284.8 85C291.8 72.1 305.3 64 320 64zM320 416C302.3 416 288 430.3 288 448C288 465.7 302.3 480 320 480C337.7 480 352 465.7 352 448C352 430.3 337.7 416 320 416zM320 224C301.8 224 287.3 239.5 288.6 257.7L296 361.7C296.9 374.2 307.4 384 319.9 384C332.5 384 342.9 374.3 343.8 361.7L351.2 257.7C352.5 239.5 338.1 224 319.8 224z"/></svg>');
+
+$forma-page-zoom: var(--forma-page-zoom, 1);
+$forma-page-width: var(--forma-page-width, 210mm);
+$forma-page-height: var(--forma-page-height, 297mm);
+$forma-page-margin-top: var(--forma-page-margin-top, 20mm);
+$forma-page-margin-bottom: var(--forma-page-margin-bottom, 20mm);
+$forma-page-margin-left: var(--forma-page-margin-left, 15mm);
+$forma-page-margin-right: var(--forma-page-margin-right, 15mm);
+
+* {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background: #fff;
+  zoom: $forma-page-zoom;
+  font-family: "Noto Sans JP", sans-serif;
+  text-autospace: normal;
+  print-color-adjust: exact;
 }
 
-body {
-  color: #111;
-  font-family: 'Yu Gothic', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  line-height: 1.7;
-  letter-spacing: 0.02em;
+html {
+  font-size: $text-size-base;
+  line-height: $text-line-height;
+  scroll-behavior: smooth;
 }
 
-.forma-preview-page {
-  width: auto;
-  min-height: auto;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-  background: #fff;
-  box-shadow: none;
+body.forma-preview-pages {
+  width: $forma-page-width;
+  min-height: $forma-page-height;
+  margin: 0 auto;
 }
 
-.forma-preview-page:not(:last-child) {
-  break-after: page;
-  page-break-after: always;
-}
+section.forma-preview-page {
+  width: $forma-page-width;
+  height: $forma-page-height;
+  margin: 0 auto 2rem auto;
+  background: $bg-color-9;
+  display: flex;
+  flex-direction: column;
 
-.forma-preview-page-header,
-.forma-preview-page-footer {
-  display: none;
-}
+  div.forma-preview-page-header,
+  div.forma-preview-page-footer {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    height: $forma-page-margin-top;
+  }
 
-.forma-preview-page-content {
-  display: contents;
+  div.forma-preview-page-content {
+    flex-grow: 1;
+    color: $text-color-1;
+    margin: 0 $forma-page-margin-right 0 $forma-page-margin-left;
+    overflow: hidden;
+  }
 }
 
 h1,
@@ -49,6 +78,38 @@ h5,
 h6 {
   break-after: avoid;
   page-break-after: avoid;
+  font-weight: bold;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0.7rem 0 0.2rem 0;
+}
+
+h2 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid $border-color;
+  margin: 0.7rem 0 0.2rem 0;
+}
+
+h3 {
+  font-size: 1.25rem;
+  margin: 0.4rem 0 0.1rem 0;
+}
+
+h4 {
+  font-size: 1rem;
+  margin: 0.2rem 0 0.05rem 0;
+}
+
+h5 {
+  font-size: 0.875rem;
+  margin: 0.2rem 0 0.05rem 0;
+}
+
+h6 {
+  font-size: 0.875rem;
+  margin: 0.2rem 0 0.05rem 0;
 }
 
 p,
@@ -61,6 +122,8 @@ img,
 table {
   break-inside: avoid;
   page-break-inside: avoid;
+  font-size: 0.875rem;
+  margin: 0.4rem 0;
 }
 
 img {
@@ -72,14 +135,201 @@ code,
 pre {
   white-space: pre-wrap;
   word-break: break-word;
+  font-size: 0.875rem;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid $border-color;
+  margin: 1.5em 0;
+}
+
+// 1. すべての code に共通する設定
+code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+}
+
+// 2. インラインコードのみ（pre の中にない code）
+:not(pre) > code {
+  background-color: $bg-color-0;
+  border-radius: $border-radius;
+  padding: 0.1rem 0.3rem;
+  color: $text-color-inline-code;
+}
+
+// 3. コードブロック
+pre {
+  background-color: $bg-color-0;
+  border-radius: $border-radius;
+  overflow-x: auto;
+  padding: 0.3rem;
+
+  code {
+    background-color: transparent;
+    padding: 0;
+  }
 }
 
 .page-break,
-[style*='page-break-after: always'],
-[style*='break-after: page'] {
+[style*="page-break-after: always"],
+[style*="break-after: page"] {
   display: block;
   page-break-after: always;
   break-after: page;
   height: 0;
   overflow: hidden;
+}
+
+details {
+  padding-left: 1.65rem;
+
+  summary {
+    list-style: none;
+    margin-left: 0;
+    position: relative;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: $icon-play;
+      display: inline-block;
+      width: 0.9rem;
+      height: 0.9rem;
+      position: absolute;
+      left: -1.4rem;
+      top: 0.25rem;
+    }
+  }
+
+  &[open] > summary::before {
+    transform: rotate(90deg);
+    left: -1.2rem;
+    top: 0.46rem;
+  }
+}
+
+ul,
+ol {
+  padding-left: 1.25rem;
+  margin: 0.2rem 0;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 0.4rem 0;
+
+  * {
+    font-size: 0.75rem;
+  }
+
+  th,
+  td {
+    border: 1px solid var(--border-color);
+    padding: 0.2rem 0.5rem;
+  }
+}
+
+.tips {
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius;
+  padding: 0.2rem 0.5rem;
+  margin: 0.4rem 0;
+  background-color: var(--bg-color-2);
+
+  * {
+    font-size: 0.75rem;
+  }
+
+  &::before {
+    content: "Tips: ";
+    font-weight: bold;
+  }
+}
+
+blockquote {
+  background-color: $bg-color-0;
+  border-left: 0.2rem solid $border-color;
+  padding-left: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.toc {
+  margin: 1rem 0;
+}
+
+.info {
+  position: relative;
+  background-color: rgba(59, 130, 246, 0.08);
+  padding: 0.2rem 0.5rem 0.2rem 2rem;
+  border-radius: $border-radius;
+  margin: 0.4rem 0;
+
+  * {
+    font-size: 0.875rem;
+  }
+
+  &::before {
+    content: $icon-circle-info;
+    position: absolute;
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+.check {
+  position: relative;
+  background-color: rgba(34, 197, 94, 0.08);
+  padding: 0.2rem 0.5rem 0.2rem 2rem;
+  border-radius: $border-radius;
+  margin: 0.4rem 0;
+
+  * {
+    font-size: 0.875rem;
+  }
+
+  &::before {
+    content: $icon-circle-check;
+    position: absolute;
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+.warn {
+  position: relative;
+  background-color: rgba(234, 179, 8, 0.08);
+  padding: 0.2rem 0.5rem 0.2rem 2rem;
+  border-radius: $border-radius;
+  margin: 0.4rem 0;
+
+  &::before {
+    content: $icon-triangle-exclamation;
+    position: absolute;
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    position: absolute;
+    left: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 }

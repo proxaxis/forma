@@ -9,5 +9,8 @@
   "files.autoSave": "afterDelay",
   "explorer.compactFolders": false,
   "editor.minimap.enabled": false,
-  "editor.wordSeparators": "./()\"'-:,.;<>~!@#$%^&*|+=[]{}`~?　、。・「」【】『』（）／！？てにをはがのともへでや"
+  "editor.wordSeparators": "./()\"'-:,.;<>~!@#$%^&*|+=[]{}`~?　、。・「」【】『』（）／！？てにをはがのともへでや",
+  "files.associations": {
+    "template.*.html": "plaintext"
+  }
 }

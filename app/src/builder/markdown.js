@@ -6,6 +6,37 @@ import xImsize from 'markdown-it-imsize';
 import xLinkAttributes from 'markdown-it-link-attributes';
 import xTaskLists from 'markdown-it-task-lists';
 import Prism from 'prismjs';
+import loadLanguages from 'prismjs/components/index.js';
+
+loadLanguages([
+  // Webフロント / スクリプト
+  'typescript',
+  'json',
+  'yaml',
+  'markdown',
+  'bash',
+  'shell-session',
+
+  // バックエンド / システム言語
+  'python',
+  'php',
+  'java',
+  'c',
+  'cpp',
+  'csharp',
+  'go',
+  'rust',
+  'ruby',
+  'kotlin',
+  'swift',
+
+  // データベース・設定ファイル
+  'sql',
+  'graphql',
+  'docker',
+  'ini',
+  'toml',
+]);
 
 /**
  * Resolves a module to its default export if it exists, otherwise returns the module itself.
@@ -33,7 +64,7 @@ export class Markdown extends MarkdownIt {
        */
       highlight: (text, language) => {
         if (language && Prism.languages[language]) {
-          return `<pre class="language-${language}"><code>${Prism.highlight(text, Prism.languages[language], language)}</code></pre>`;
+          return Prism.highlight(text, Prism.languages[language], language);
         }
         return '';
       },
@@ -41,6 +72,25 @@ export class Markdown extends MarkdownIt {
 
     this.attachNormalizeLinkFunctions();
     this.importMarkdownItPlugins();
+    this.resolveImageUri = null;
+    this.renderer.rules.image = (tokens, index, options, env, self) => {
+      const token = tokens[index];
+      const sourceAttribute = token.attrGet('src');
+      const resolvedSource = this.resolveImageUri?.(sourceAttribute);
+      if (resolvedSource) token.attrSet('src', resolvedSource);
+      token.attrSet('alt', self.renderInlineAsText(token.children ?? [], options, env));
+      return self.renderToken(tokens, index, options);
+    };
+    this.renderer.rules.fence = (tokens, index) => {
+      const token = tokens[index];
+      const language = token.info.trim().split(/\s+/)[0] ?? '';
+
+      const highlighted = language && Prism.languages[language] ? Prism.highlight(token.content, Prism.languages[language], language) : this.utils.escapeHtml(token.content);
+
+      const languageClass = language ? ` class="language-${this.utils.escapeHtml(language)}"` : '';
+
+      return `<pre${languageClass}><code${languageClass}>${highlighted.trim()}</code></pre>\n`;
+    };
   }
 
   attachNormalizeLinkFunctions() {

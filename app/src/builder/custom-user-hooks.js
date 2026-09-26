@@ -13,7 +13,7 @@
  */
 export async function runUserHandleMarkdown(builder) {
   const config = await builder.buildConfig();
-  const result = (await config.parser.load())?.handleMarkdown?.(builder.rawMarkdownText, builder.frontmatter);
+  const result = await (await config.parser.load())?.handleMarkdown?.(builder.rawMarkdownText, builder.frontmatter);
   return result ?? builder.rawMarkdownText;
 }
 
@@ -24,7 +24,7 @@ export async function runUserHandleMarkdown(builder) {
  */
 export async function runUserHandleHTML(builder) {
   const config = await builder.buildConfig();
-  const result = (await config.parser.load())?.handleHTML?.(builder.rawHTMLText, builder.frontmatter);
+  const result = await (await config.parser.load())?.handleHTML?.(builder.rawHTMLText, builder.frontmatter);
   return result ?? builder.rawHTMLText;
 }
 
@@ -34,8 +34,8 @@ export async function runUserHandleHTML(builder) {
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleHeaderHTML(builder) {
-  const config = await builder.buildConfig();
-  const result = (await config.parser.load())?.handleHeaderHTML?.(builder.frontmatter, builder.rawHTMLText);
+  const { parser } = await builder.buildConfig();
+  const result = await (await parser.load())?.handleHeaderHTML?.(builder.rawHeaderHTMLText, builder.frontmatter);
   return result ?? builder.rawHeaderHTMLText;
 }
 
@@ -45,7 +45,7 @@ export async function runUserHandleHeaderHTML(builder) {
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleFooterHTML(builder) {
-  const config = await builder.buildConfig();
-  const result = (await config.parser.load())?.handleFooterHTML?.(builder.frontmatter, builder.rawHTMLText);
+  const { parser } = await builder.buildConfig();
+  const result = await (await parser.load())?.handleFooterHTML?.(builder.rawFooterHTMLText, builder.frontmatter);
   return result ?? builder.rawFooterHTMLText;
 }

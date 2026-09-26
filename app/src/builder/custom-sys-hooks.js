@@ -1,4 +1,4 @@
-import { locale, headerHTMLStyle, footerHTMLStyle } from '@/assets/constants.js';
+import { locale } from '@/assets/constants.js';
 import { randomUUID as getRandomUUID } from 'node:crypto';
 
 /**
@@ -10,18 +10,9 @@ import { randomUUID as getRandomUUID } from 'node:crypto';
  */
 
 /**
- * Converts an array of CSS style declarations into a single string.
- * @param {string[][]} styleArray - An array of [key, value] pairs representing CSS styles.
- * @returns {string} - A string containing all the CSS styles.
- */
-function getStyleString(styleArray) {
-  return styleArray.map(([key, value]) => `${key}: ${value};`).join(' ');
-}
-
-/**
  * Runs the system's custom Markdown handler.
  * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
- * @returns {Promise<string>} - The processed Markdown text.
+ * @returns {Promise<void>} - Processes the parsed Markdown tokens.
  */
 export async function runSystemHandleMarkdown(builder) {
   const tokens = await builder.buildTokens();
@@ -49,6 +40,11 @@ export async function runSystemHandleMarkdown(builder) {
   // --- 1. トークン走査とメタデータ収集・ID注入 ---
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+
+    // コードブロック内の Markdown は評価しない。
+    if (token.type === 'fence' || token.type === 'code_block') {
+      continue;
+    }
 
     // Markdown-it parses a standalone `---` as an hr token rather than an HTML block.
     if (token.type === 'hr' && token.markup === '---') {
@@ -132,7 +128,9 @@ export async function runSystemHandleMarkdown(builder) {
         const numbering = numberingCounters.slice(numberingConfig.min, level + 1).join('.');
         text = `${numbering}. ${originalText}`;
         inlineToken.content = text;
-        inlineToken.children.unshift({
+        /** @type {import('markdown-it').Token} */
+        const numberingToken = Object.create(Object.getPrototypeOf(inlineToken));
+        Object.assign(numberingToken, {
           type: 'text',
           tag: '',
           attrs: null,
@@ -147,6 +145,8 @@ export async function runSystemHandleMarkdown(builder) {
           block: false,
           hidden: false,
         });
+        inlineToken.children ??= [];
+        inlineToken.children.unshift(numberingToken);
       }
 
       // 見出し要素に id 属性 (UUID) を付与
@@ -176,7 +176,10 @@ export async function runSystemHandleMarkdown(builder) {
   if (tocToken && tocConfig) {
     const targetHeadings = headlines.filter((h) => h.level >= tocConfig.min && h.level <= tocConfig.max);
 
-    if (targetHeadings.length === 0) return '';
+    if (targetHeadings.length === 0) {
+      tocToken.content = '';
+      return;
+    }
 
     let html = '<ul class="toc">\n';
     let currentLevel = targetHeadings[0].level;
@@ -201,18 +204,17 @@ export async function runSystemHandleMarkdown(builder) {
     tocToken.content = html + '\n';
   }
 
-  // --- 3. HTML レンダリング ---
-  let html = builder.markdown.renderer.render(tokens, builder.markdown.options, {});
+  // --- 3. 内部リンクのエイリアス解決用マップをトークンへ反映 ---
+  tokens.forEach((token) => {
+    if (token.type !== 'inline' || !token.children) return;
 
-  // --- 4. 内部リンクのエイリアス解決 (#alias -> #uuid) ---
-  html = html.replace(/href="#([^"]+)"/g, (match, targetId) => {
-    if (headlineIdAliasMap.has(targetId)) {
-      return `href="#${headlineIdAliasMap.get(targetId)}"`;
-    }
-    return match;
+    token.children.forEach((child) => {
+      if (child.type !== 'link_open') return;
+      const targetId = child.attrGet('href')?.match(/^#(.+)$/)?.[1];
+      const resolvedId = targetId ? headlineIdAliasMap.get(targetId) : undefined;
+      if (resolvedId) child.attrSet('href', `#${resolvedId}`);
+    });
   });
-
-  return html;
 }
 
 /**
@@ -231,73 +233,46 @@ export async function runSystemHandleHTML(builder) {
  */
 export async function runSystemHandleHeaderHTML(builder) {
   const config = await builder.buildConfig();
-  const headerDirectives = builder.frontmatter.header ?? ['title', 'date'];
-
-  const directives = (Array.isArray(headerDirectives) ? headerDirectives : [headerDirectives])
+  const rawDirectives = builder.frontmatter.header ?? ['title', 'date'];
+  const directives = (Array.isArray(rawDirectives) ? rawDirectives : [rawDirectives])
     .map((val) => (val === null || val === undefined ? '' : val))
     .map((val) => (typeof val === 'string' ? val.trim() : String(val).trim()))
     .filter((_, i) => i < 3); // Limit to 3 columns
 
-  const leftMargin = (await config.browser.loadConfig())?.margin?.left ?? '0px';
-  const rightMargin = (await config.browser.loadConfig())?.margin?.right ?? '0px';
-  const headerHTMLStyleString = getStyleString(
-    headerHTMLStyle.concat([
-      ['margin-left', leftMargin],
-      ['margin-right', rightMargin],
-    ]),
-  );
-
-  const elements = [`<div style="${headerHTMLStyleString}">`];
-
+  const elements = [];
   for (let i = 0; i < directives.length; i++) {
-    const itemStyle = [];
-    // 1 Column: left
-    if (directives.length === 1) {
-      itemStyle.push(['text-align', 'left;']);
-    }
-    // 2 Columns: left, right
-    else if (directives.length === 2) {
-      if (i === 0) itemStyle.push(['text-align', 'left;']);
-      else itemStyle.push(['text-align', 'right;']);
-    }
-    // 3 Columns or more: left, center, right
-    else {
-      if (i === 0) itemStyle.push(['text-align', 'left;']);
-      else if (i === 1) itemStyle.push(['text-align', 'center;']);
-      else itemStyle.push(['text-align', 'right;']);
-    }
-
     switch (directives[i].toLowerCase()) {
       case 'title':
         const tokens = await builder.buildTokens();
         const headlineIndex = tokens.findIndex((token) => token.type === 'heading_open' && token.tag === 'h1');
 
-        if (headlineIndex > -1) {
-          const headlineText = tokens[headlineIndex + 1]?.content ?? '~~~';
-          elements.push(`<span>${headlineText}</span>`);
+        if (headlineIndex > -1 && tokens[headlineIndex + 1]?.content) {
+          elements.push(`<span data-forma-header-item="title">${tokens[headlineIndex + 1].content}</span>`);
           break;
         }
 
-        elements.push(`<span>~~~</span>`);
+        elements.push(`<span data-forma-header-item="no-title">No Title Document</span>`);
         break;
 
       case 'date':
         const dateText = new Date().toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-');
-        elements.push(`<span>${dateText}</span>`);
+        elements.push(`<span data-forma-header-item="date">${dateText}</span>`);
         break;
 
       case 'page':
-        elements.push(`<span class="pageNumber"></span>`);
+        elements.push(`<span class="pageNumber" data-forma-header-item="page"></span>`);
         break;
 
       default:
-        elements.push(`<span>${directives[i]}</span>`);
+        elements.push(`<span data-forma-header-item="custom">${directives[i]}</span>`);
     }
   }
 
-  elements.push(`</div>`);
-
-  return elements.join('');
+  return builder.rawHeaderHTMLText
+    .replace('___NONCE___', builder.nonce)
+    .replace('___MARGIN_LEFT___', (await config.browser.loadConfig())?.margin?.left ?? '0px')
+    .replace('___MARGIN_RIGHT___', (await config.browser.loadConfig())?.margin?.right ?? '0px')
+    .replace('___DOCUMENT_HEADER_CONTENT___', elements.join(''));
 }
 
 /**
@@ -306,54 +281,46 @@ export async function runSystemHandleHeaderHTML(builder) {
  * @returns {Promise<string>} - The processed footer HTML content.
  */
 export async function runSystemHandleFooterHTML(builder) {
-  const footerDirectives = builder.frontmatter.footer ?? ['', '', 'page'];
-
-  const directives = (Array.isArray(footerDirectives) ? footerDirectives : [footerDirectives])
+  const rawDirectives = builder.frontmatter.footer ?? ['', '', 'page'];
+  const directives = (Array.isArray(rawDirectives) ? rawDirectives : [rawDirectives])
     .map((val) => (val === null || val === undefined ? '' : val))
     .map((val) => (typeof val === 'string' ? val.trim() : String(val).trim()))
     .filter((_, i) => i < 3); // Limit to 3 columns
 
   const config = await builder.buildConfig();
-  const leftMargin = (await config.browser.loadConfig())?.margin?.left ?? '0px';
-  const rightMargin = (await config.browser.loadConfig())?.margin?.right ?? '0px';
-  const footerHTMLStyleString = getStyleString(
-    footerHTMLStyle.concat([
-      ['margin-left', leftMargin],
-      ['margin-right', rightMargin],
-    ]),
-  );
-  const elements = [`<div style="${footerHTMLStyleString}">`];
 
+  const elements = [];
   for (let i = 0; i < directives.length; i++) {
     switch (directives[i].toLowerCase()) {
       case 'title':
         const tokens = await builder.buildTokens();
         const headlineIndex = tokens.findIndex((token) => token.type === 'heading_open' && token.tag === 'h1');
 
-        if (headlineIndex > -1) {
-          const headlineText = tokens[headlineIndex + 1]?.content ?? '~~~';
-          elements.push(`<span>${headlineText}</span>`);
+        if (headlineIndex > -1 && tokens[headlineIndex + 1]?.content) {
+          elements.push(`<span data-forma-footer-item="title">${tokens[headlineIndex + 1].content}</span>`);
           break;
         }
 
-        elements.push(`<span>~~~</span>`);
+        elements.push(`<span data-forma-footer-item="no-title">No Title Document</span>`);
         break;
 
       case 'date':
         const dateText = new Date().toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-');
-        elements.push(`<span>${dateText}</span>`);
+        elements.push(`<span data-forma-footer-item="date">${dateText}</span>`);
         break;
 
       case 'page':
-        elements.push(`<span class="pageNumber"></span>`);
+        elements.push(`<span class="pageNumber" data-forma-footer-item="page"></span>`);
         break;
 
       default:
-        elements.push(`<span>${directives[i]}</span>`);
+        elements.push(`<span data-forma-footer-item="custom">${directives[i]}</span>`);
     }
   }
 
-  elements.push(`</div>`);
-
-  return elements.join('');
+  return builder.rawFooterHTMLText
+    .replace('___NONCE___', builder.nonce)
+    .replace('___MARGIN_LEFT___', (await config.browser.loadConfig())?.margin?.left ?? '0px')
+    .replace('___MARGIN_RIGHT___', (await config.browser.loadConfig())?.margin?.right ?? '0px')
+    .replace('___DOCUMENT_FOOTER_CONTENT___', elements.join(''));
 }

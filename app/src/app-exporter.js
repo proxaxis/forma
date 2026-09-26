@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import vsc from 'vscode';
 import puppeteer from 'puppeteer-core';
 import { Builder } from '@/builder/builder.js';
@@ -15,7 +17,7 @@ export class AppExporter {
     }
     const builder = new Builder(vscTextDocument);
     const config = await builder.buildConfig();
-    const docBodyTemplate = await builder.buildBodyHTML();
+    const docBodyTemplate = await inlineLocalImages(await builder.buildBodyHTML());
     const docHeaderTemplate = await builder.buildHeaderHTML();
     const docFooterTemplate = await builder.buildFooterHTML();
     const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = (await config.browser.loadConfig()) || {};
@@ -29,11 +31,25 @@ export class AppExporter {
     });
     try {
       const page = await browser.newPage();
+      await page.setBypassCSP(true);
       await page.setContent(docBodyTemplate, { waitUntil: 'load' });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all(
+          Array.from(document.images).map((image) =>
+            image.complete
+              ? undefined
+              : new Promise((resolve) => {
+                  image.addEventListener('load', resolve, { once: true });
+                  image.addEventListener('error', resolve, { once: true });
+                }),
+          ),
+        );
+      });
       const exportStyleText = await config.theme.loadExport();
-      await page.addStyleTag({ url: `data:text/css;charset=utf-8,${encodeURIComponent(exportStyleText)}` });
+      await page.addStyleTag({ content: exportStyleText });
       await page.evaluate(() => {
-        document.querySelectorAll('.forma-preview-page-header, .forma-preview-page-footer').forEach((element) => {
+        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.forma-preview-page-header, .forma-preview-page-footer')).forEach((element) => {
           element.style.display = 'none';
         });
 
@@ -58,4 +74,47 @@ export class AppExporter {
     }
     void vsc.window.showInformationMessage(`Exported ${path.basename(docOutputPath)}.`);
   }
+}
+
+/**
+ * Embeds local file images so Chromium can load them from the about:blank PDF page.
+ * @param {string} html - Rendered document HTML.
+ * @returns {Promise<string>}
+ */
+async function inlineLocalImages(html) {
+  const imageSources = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gi)].map((match) => match[1]);
+  const replacements = await Promise.all(
+    imageSources.map(async (source) => {
+      if (!source.startsWith('file:')) return [source, source];
+
+      try {
+        const imageUrl = new URL(source);
+        const imageBuffer = await readFile(fileURLToPath(imageUrl));
+        const contentType = getImageContentType(path.extname(imageUrl.pathname));
+        return [source, `data:${contentType};base64,${imageBuffer.toString('base64')}`];
+      } catch {
+        return [source, source];
+      }
+    }),
+  );
+
+  return replacements.reduce((result, [source, replacement]) => result.replaceAll(`src="${source}"`, `src="${replacement}"`), html);
+}
+
+/**
+ * @param {string} extension - Image file extension.
+ * @returns {string}
+ */
+function getImageContentType(extension) {
+  return (
+    {
+      '.avif': 'image/avif',
+      '.gif': 'image/gif',
+      '.jpeg': 'image/jpeg',
+      '.jpg': 'image/jpeg',
+      '.png': 'image/png',
+      '.svg': 'image/svg+xml',
+      '.webp': 'image/webp',
+    }[extension.toLowerCase()] ?? 'application/octet-stream'
+  );
 }

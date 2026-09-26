@@ -11,24 +11,6 @@ export const wsConfigDirectoryName = '.forma';
 
 export const locale = 'ja-JP';
 
-export const headerHTMLStyle = [
-  ['width', '100%'],
-  ['font-size', '10px'],
-  ['display', 'flex'],
-  ['justify-content', 'space-between'],
-  ['color', '#555'],
-  /* Margin option will be added here from config */
-];
-
-export const footerHTMLStyle = [
-  ['width', '100%'],
-  ['font-size', '10px'],
-  ['display', 'flex'],
-  ['justify-content', 'space-between'],
-  ['color', '#555'],
-  /* Margin option will be added here from config */
-];
-
 /**
  * @typedef {Object} WorkspaceConfigTemplates
  * @property {string} content - The content of the template.

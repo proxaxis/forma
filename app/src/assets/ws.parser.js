@@ -1,47 +1,39 @@
 /**
  * Hook to customize Markdown content before rendering.
- * @param {string} content - The Markdown content to be rendered (excluding frontmatter).
+ * @param {string} text - The Markdown content to be rendered (excluding frontmatter).
  * @param {Record<string, unknown>} frontmatter - The frontmatter data extracted from the Markdown file.
- * @param {string} rawText - The raw text of the Markdown file.
- * @returns {Promise<string>} The modified Markdown content.
+ * @returns {Promise<string|undefined>} The modified Markdown content. If undefined is returned, this processing will be skipped.
  */
-export async function handleMarkdown(content, frontmatter, rawText) {
-  void frontmatter;
-  void rawText;
-  return content;
+export async function handleMarkdown(text, frontmatter) {
+  return undefined;
 }
 
 /**
  * Hook to customize HTML content after rendering.
  * @param {string} html - The HTML content to be rendered.
- * @param {{ frontmatter: Record<string, unknown>, rawText: string }} context - The context object containing frontmatter and raw text.
- * @returns {Promise<string>} The modified HTML content.
+ * @param {Record<string, unknown>} frontmatter - The frontmatter data extracted from the Markdown file.
+ * @returns {Promise<string|undefined>} The modified HTML content. If undefined is returned, this processing will be skipped.
  */
-export async function handleHTML(html, context) {
-  void context;
-  return html;
+export async function handleHTML(html, frontmatter) {
+  return undefined;
 }
 
 /**
  * Generate the PDF header dynamically from document metadata and rendered HTML.
+ * @param {string} html - The header HTML template.
  * @param {Record<string, unknown>} frontmatter - The frontmatter data.
- * @param {string} rawHTML - The rendered document HTML.
- * @returns {Promise<string>} The Puppeteer header template.
+ * @returns {Promise<string|undefined>} The modified header HTML. If undefined is returned, this processing will be skipped.
  */
-export async function handleHeaderHTML(frontmatter, rawHTML) {
-  void frontmatter;
-  void rawHTML;
-  return '';
+export async function handleHeaderHTML(html, frontmatter) {
+  return undefined;
 }
 
 /**
  * Generate the PDF footer dynamically from document metadata and rendered HTML.
+ * @param {string} html - The footer HTML template.
  * @param {Record<string, unknown>} frontmatter - The frontmatter data.
- * @param {string} rawHTML - The rendered document HTML.
- * @returns {Promise<string>} The Puppeteer footer template.
+ * @returns {Promise<string|undefined>} The modified footer HTML. If undefined is returned, this processing will be skipped.
  */
-export async function handleFooterHTML(frontmatter, rawHTML) {
-  void frontmatter;
-  void rawHTML;
-  return '';
+export async function handleFooterHTML(html, frontmatter) {
+  return undefined;
 }

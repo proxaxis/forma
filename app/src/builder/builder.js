@@ -1,4 +1,5 @@
 import grMatter from 'gray-matter';
+import { randomBytes as getRandomBytes } from 'node:crypto';
 import vsc from 'vscode';
 import GithubSlugger from 'github-slugger';
 import { htmlBuilderTemplates } from '@/assets/constants.js';
@@ -31,7 +32,7 @@ export class Builder {
   get rawHTMLText() {
     if (this.cache.has('rawHTMLText')) return this.cache.get('rawHTMLText');
 
-    const html = this.markdown.render(this.rawMarkdownText);
+    const html = this.renderTokens();
     this.cache.set('rawHTMLText', html);
     return html;
   }
@@ -45,10 +46,24 @@ export class Builder {
   }
 
   get rawHeaderHTMLText() {
-    return this.cache.get('rawHeaderHTMLText') ?? '';
+    if (this.cache.has('rawHeaderHTMLText')) return this.cache.get('rawHeaderHTMLText');
+    const template = htmlBuilderTemplates.find((template) => template.name === 'template.header.html')?.content ?? '';
+    this.cache.set('rawHeaderHTMLText', template);
+    return template;
   }
   get rawFooterHTMLText() {
-    return this.cache.get('rawFooterHTMLText') ?? '';
+    if (this.cache.has('rawFooterHTMLText')) return this.cache.get('rawFooterHTMLText');
+    const template = htmlBuilderTemplates.find((template) => template.name === 'template.footer.html')?.content ?? '';
+    this.cache.set('rawFooterHTMLText', template);
+    return template;
+  }
+
+  get nonce() {
+    if (this.cache.has('nonce')) return this.cache.get('nonce');
+
+    const nonce = getRandomBytes(16).toString('base64');
+    this.cache.set('nonce', nonce);
+    return nonce;
   }
 
   set rawMarkdownText(value) {
@@ -103,6 +118,16 @@ export class Builder {
     const tokens = this.markdown.parse(this.rawMarkdownText, {});
     this.cache.set('tokens', tokens);
     return tokens;
+  }
+
+  /**
+   * Render the Markdown tokens after all token handlers have processed them.
+   * @returns {string} - The generated HTML.
+   */
+  renderTokens() {
+    const tokens = this.cache.get('tokens') ?? this.markdown.parse(this.rawMarkdownText, {});
+    this.cache.set('tokens', tokens);
+    return this.markdown.renderer.render(tokens, this.markdown.options, {});
   }
 
   /**
@@ -169,17 +194,25 @@ export class Builder {
         const pages = [];
         let currentPage = null;
 
+        const appendPageElement = (page, element) => {
+          const clone = element.cloneNode(true);
+          clone.querySelectorAll('.pageNumber').forEach((pageNumber) => {
+            pageNumber.textContent = String(pages.length + 1);
+          });
+          page.appendChild(clone);
+        };
+
         const createPage = () => {
           const page = pageDocument.createElement('section');
           page.className = 'forma-preview-page';
 
-          if (header) page.appendChild(header.cloneNode(true));
+          if (header) appendPageElement(page, header);
 
           const pageContent = pageDocument.createElement('div');
           pageContent.className = 'forma-preview-page-content';
           page.appendChild(pageContent);
 
-          if (footer) page.appendChild(footer.cloneNode(true));
+          if (footer) appendPageElement(page, footer);
           pages.push(page);
           return { page, pageContent };
         };
@@ -219,8 +252,18 @@ export class Builder {
   async buildBodyHTML({ csp: cspSource = 'file:', resolveResourceUri = (vscUri) => vscUri.toString() } = {}) {
     const config = await this.buildConfig();
 
+    this.markdown.resolveImageUri = (source) => {
+      if (!source || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(source) || source.startsWith('#')) return source;
+
+      const sourceUri = vsc.Uri.parse(source);
+      const documentDirectoryUri = vsc.Uri.joinPath(this.vscTextDocument.uri, '..');
+      const imageUri = vsc.Uri.joinPath(documentDirectoryUri, sourceUri.path).with({ query: sourceUri.query, fragment: sourceUri.fragment });
+      return resolveResourceUri(imageUri);
+    };
+
     this.rawMarkdownText = await runUserHandleMarkdown(this);
-    this.rawMarkdownText = await runSystemHandleMarkdown(this);
+    await runSystemHandleMarkdown(this);
+    this.rawHTMLText = this.renderTokens();
     this.rawHTMLText = await runUserHandleHTML(this);
     this.rawHTMLText = await runSystemHandleHTML(this);
 
@@ -249,8 +292,11 @@ export class Builder {
       const map = new Map();
       map.set('default-src', ["'none'"]);
       map.set('img-src', [cspSource, 'https:', 'data:']);
+      map.set('media-src', [cspSource, 'https:', 'data:']);
+      map.set('link-src', [cspSource, 'https:', 'data:']);
+      map.set('script-src', [cspSource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
       map.set('font-src', [cspSource, 'https:', 'data:']);
-      map.set('style-src', [cspSource, 'data:']);
+      map.set('style-src', [cspSource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
       return Array.from(map.entries())
         .map(([key, values]) => `${key} ${values.join(' ')}`)
         .join('; ');
@@ -293,8 +339,6 @@ export class Builder {
    * @returns {Promise<string>} - The header HTML.
    */
   async buildHeaderHTML() {
-    if (this.cache.has('rawHeaderHTMLText')) return this.rawHeaderHTMLText;
-    this.rawHeaderHTMLText = htmlBuilderTemplates.find((template) => template.name === 'template.header.html')?.content ?? '';
     this.rawHeaderHTMLText = await runUserHandleHeaderHTML(this);
     this.rawHeaderHTMLText = await runSystemHandleHeaderHTML(this);
     return this.rawHeaderHTMLText.replace(/\r?\n|\r/g, '');
@@ -305,8 +349,6 @@ export class Builder {
    * @returns {Promise<string>} - The footer HTML.
    */
   async buildFooterHTML() {
-    if (this.cache.has('rawFooterHTMLText')) return this.rawFooterHTMLText;
-    this.rawFooterHTMLText = htmlBuilderTemplates.find((template) => template.name === 'template.footer.html')?.content ?? '';
     this.rawFooterHTMLText = await runUserHandleFooterHTML(this);
     this.rawFooterHTMLText = await runSystemHandleFooterHTML(this);
     return this.rawFooterHTMLText.replace(/\r?\n|\r/g, '');
@@ -343,5 +385,5 @@ function fillHtmlTemplate({ bodyText, baseHref, csp, cssVariablesDataUri, themeC
     .replace('___THEME_CSS_DATA_URI___', markdownInstance.utils.escapeHtml(themeCssDataUri))
     .replace('___BODY_CLASS___', bodyClassList)
     .replace('___BODY_CUSTOM_DATA_ATTRS___', bodyCustomDataAttrs)
-    .replace('<!--___RAW_HTML___-->', bodyText);
+    .replace('___RAW_HTML___', bodyText);
 }
