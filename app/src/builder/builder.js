@@ -3,20 +3,20 @@ import { randomBytes as getRandomBytes } from 'node:crypto';
 import vsc from 'vscode';
 import GithubSlugger from 'github-slugger';
 import { htmlBuilderTemplates } from '@/assets/constants.js';
-import { Markdown } from '@/builder/markdown.js';
+import { ExtendedMarkdownIt } from '@/builder/extended-markdown-it.js';
 import { ThemeConfiguration } from '@/builder/configuration-theme.js';
 import { ParserConfiguration } from '@/builder/configuration-parser.js';
 import { BrowserConfiguration } from '@/builder/configuration-browser.js';
 import { runUserHandleMarkdown, runUserHandleHTML, runUserHandleHeaderHTML, runUserHandleFooterHTML } from '@/builder/custom-user-hooks.js';
 import { runSystemHandleMarkdown, runSystemHandleHTML, runSystemHandleHeaderHTML, runSystemHandleFooterHTML } from '@/builder/custom-sys-hooks.js';
 
-const markdownInstance = new Markdown();
+const xMarkdownInstance = new ExtendedMarkdownIt();
 
 export class Builder {
   /** @param {vsc.TextDocument} vscTextDocument - Document provided by VS Code */
   constructor(vscTextDocument) {
     this.vscTextDocument = vscTextDocument;
-    this.markdown = markdownInstance;
+    this.xMarkdownInstance = xMarkdownInstance;
     this.slugger = new GithubSlugger();
     this.cache = new Map();
   }
@@ -115,7 +115,7 @@ export class Builder {
   async buildTokens() {
     if (this.cache.has('tokens')) return this.cache.get('tokens');
 
-    const tokens = this.markdown.parse(this.rawMarkdownText, {});
+    const tokens = this.xMarkdownInstance.parse(this.rawMarkdownText, {});
     this.cache.set('tokens', tokens);
     return tokens;
   }
@@ -125,9 +125,9 @@ export class Builder {
    * @returns {string} - The generated HTML.
    */
   renderTokens() {
-    const tokens = this.cache.get('tokens') ?? this.markdown.parse(this.rawMarkdownText, {});
+    const tokens = this.cache.get('tokens') ?? this.xMarkdownInstance.parse(this.rawMarkdownText, {});
     this.cache.set('tokens', tokens);
-    return this.markdown.renderer.render(tokens, this.markdown.options, {});
+    return this.xMarkdownInstance.renderer.render(tokens, this.xMarkdownInstance.options, {});
   }
 
   /**
@@ -194,8 +194,12 @@ export class Builder {
         const pages = [];
         let currentPage = null;
 
+        /**
+         * @param {HTMLElement} page
+         * @param {Element} element
+         */
         const appendPageElement = (page, element) => {
-          const clone = element.cloneNode(true);
+          const clone = /** @type {Element} */ (element.cloneNode(true));
           clone.querySelectorAll('.pageNumber').forEach((pageNumber) => {
             pageNumber.textContent = String(pages.length + 1);
           });
@@ -252,12 +256,22 @@ export class Builder {
   async buildBodyHTML({ csp: cspSource = 'file:', resolveResourceUri = (vscUri) => vscUri.toString() } = {}) {
     const config = await this.buildConfig();
 
-    this.markdown.resolveImageUri = (source) => {
+    /**
+     * @param {string | null} source
+     * @returns {string | null}
+     */
+    this.xMarkdownInstance.resolveImageUri = (source) => {
       if (!source || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(source) || source.startsWith('#')) return source;
 
       const sourceUri = vsc.Uri.parse(source);
-      const documentDirectoryUri = vsc.Uri.joinPath(this.vscTextDocument.uri, '..');
-      const imageUri = vsc.Uri.joinPath(documentDirectoryUri, sourceUri.path).with({ query: sourceUri.query, fragment: sourceUri.fragment });
+      const workspaceRootUri = config.browser.vscWorkspaceRootUri;
+      const baseUri = source === '@' || source.startsWith('@/')
+        ? workspaceRootUri
+        : vsc.Uri.joinPath(this.vscTextDocument.uri, '..');
+      if (!baseUri) return source;
+
+      const imagePath = source === '@' ? '' : source.startsWith('@/') ? source.slice(2) : sourceUri.path;
+      const imageUri = vsc.Uri.joinPath(baseUri, imagePath).with({ query: sourceUri.query, fragment: sourceUri.fragment });
       return resolveResourceUri(imageUri);
     };
 
@@ -310,7 +324,7 @@ export class Builder {
       map.set('data-injected-by', 'forma');
       map.set('data-forma-theme-name', config.theme.themeName);
       return Array.from(map.entries())
-        .map(([key, value]) => `${key}="${this.markdown.utils.escapeHtml(value)}"`)
+        .map(([key, value]) => `${key}="${this.xMarkdownInstance.utils.escapeHtml(value)}"`)
         .join(' ');
     })();
 
@@ -379,10 +393,10 @@ function getStyleSheetDataUri(content) {
 function fillHtmlTemplate({ bodyText, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs }) {
   const template = htmlBuilderTemplates.find((template) => template.name === 'template.skeleton.html')?.content ?? '';
   return template
-    .replace('___BASE_HREF___', markdownInstance.utils.escapeHtml(baseHref))
-    .replace('___CSP___', markdownInstance.utils.escapeHtml(csp))
-    .replace('___CSS_VARIABLES_DATA_URI___', markdownInstance.utils.escapeHtml(cssVariablesDataUri))
-    .replace('___THEME_CSS_DATA_URI___', markdownInstance.utils.escapeHtml(themeCssDataUri))
+    .replace('___BASE_HREF___', xMarkdownInstance.utils.escapeHtml(baseHref))
+    .replace('___CSP___', xMarkdownInstance.utils.escapeHtml(csp))
+    .replace('___CSS_VARIABLES_DATA_URI___', xMarkdownInstance.utils.escapeHtml(cssVariablesDataUri))
+    .replace('___THEME_CSS_DATA_URI___', xMarkdownInstance.utils.escapeHtml(themeCssDataUri))
     .replace('___BODY_CLASS___', bodyClassList)
     .replace('___BODY_CUSTOM_DATA_ATTRS___', bodyCustomDataAttrs)
     .replace('___RAW_HTML___', bodyText);

@@ -45,7 +45,16 @@ loadLanguages([
  */
 const xModuleResolver = (plugin) => (plugin && plugin.default ? plugin.default : plugin);
 
-export class Markdown extends MarkdownIt {
+/**
+ * @callback ResolveImageUri
+ * @param {string | null} source
+ * @returns {string | null}
+ */
+
+export class ExtendedMarkdownIt extends MarkdownIt {
+  /** @type {ResolveImageUri} */
+  resolveImageUri = () => null;
+
   constructor() {
     super({
       /** @type {boolean} Enable HTML tags in source. */
@@ -72,11 +81,10 @@ export class Markdown extends MarkdownIt {
 
     this.attachNormalizeLinkFunctions();
     this.importMarkdownItPlugins();
-    this.resolveImageUri = null;
     this.renderer.rules.image = (tokens, index, options, env, self) => {
       const token = tokens[index];
       const sourceAttribute = token.attrGet('src');
-      const resolvedSource = this.resolveImageUri?.(sourceAttribute);
+      const resolvedSource = this.resolveImageUri?.(typeof sourceAttribute === 'string' ? sourceAttribute : null);
       if (resolvedSource) token.attrSet('src', resolvedSource);
       token.attrSet('alt', self.renderInlineAsText(token.children ?? [], options, env));
       return self.renderToken(tokens, index, options);

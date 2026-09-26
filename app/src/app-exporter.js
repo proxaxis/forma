@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import vsc from 'vscode';
 import puppeteer from 'puppeteer-core';
@@ -22,7 +22,10 @@ export class AppExporter {
     const docFooterTemplate = await builder.buildFooterHTML();
     const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = (await config.browser.loadConfig()) || {};
     const browserExecutablePath = await config.browser.resolveExecutablePath();
-    const docOutputPath = path.join(path.dirname(vscTextDocument.uri.fsPath), destination, `${path.basename(vscTextDocument.uri.fsPath, path.extname(vscTextDocument.uri.fsPath))}.pdf`);
+    const documentDirectory = path.dirname(vscTextDocument.uri.fsPath);
+    const outputDirectory = destination === '@' || destination.startsWith('@/') ? path.join(config.browser.vscWorkspaceRootUri?.fsPath ?? documentDirectory, destination.slice(destination === '@' ? 1 : 2)) : path.join(documentDirectory, destination);
+    const docOutputPath = path.join(outputDirectory, `${path.basename(vscTextDocument.uri.fsPath, path.extname(vscTextDocument.uri.fsPath))}.pdf`);
+    await mkdir(outputDirectory, { recursive: true });
 
     const browser = await puppeteer.launch({
       executablePath: browserExecutablePath,

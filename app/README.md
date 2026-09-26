@@ -22,6 +22,31 @@ Run `npm install` with Node.js 24 or later. PDF export uses `puppeteer-core`; se
 
 Settings can be overridden per project in `.forma/` with `default.css` or `default.scss`, `parser.js`, `puppeteer.json`, `headerTemplate.html`, and `footerTemplate.html`. A Markdown frontmatter directive (`theme`, `parser`, or `puppeteer`) selects a named preset from the corresponding `list` setting.
 
+Header and footer content can be configured in frontmatter. The existing array form remains supported; use the object form to add CSS styles:
+
+```yaml
+header:
+	items: [title, date]
+	style:
+		color: '#666'
+		font-size: 12px
+footer:
+	items: ['', '', page]
+	style: 'font-size: 9px; color: #888;'
+```
+
+Styles can also be set for each item. Use `value` (or `content`, `item`, or `name`) for the directive value:
+
+```yaml
+header:
+	items:
+		- value: title
+		  style:
+			font-weight: bold
+		- value: date
+		  style: 'color: #888; font-size: 9px'
+```
+
 ## Known Issues
 
 The VS Code integration tests require a display server when run in a Linux container. Use `xvfb-run npm test` in CI or a desktop environment.

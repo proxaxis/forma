@@ -4,11 +4,13 @@
  * @property {function?} handleHTML - A function to handle HTML content.
  * @property {function?} handleHeaderHTML - A function to handle header HTML content.
  * @property {function?} handleFooterHTML - A function to handle footer HTML content.
+ *
+ * @typedef {import('@/builder/builder.js').Builder} Builder
  */
 
 /**
  * Runs the user's custom Markdown handler.
- * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
+ * @param {Builder} builder - The builder instance.
  * @returns {Promise<string>} - The processed Markdown text.
  */
 export async function runUserHandleMarkdown(builder) {
@@ -19,7 +21,7 @@ export async function runUserHandleMarkdown(builder) {
 
 /**
  * Runs the user's custom HTML handler.
- * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
+ * @param {Builder} builder - The builder instance.
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleHTML(builder) {
@@ -30,7 +32,7 @@ export async function runUserHandleHTML(builder) {
 
 /**
  * Runs the user's custom header HTML handler.
- * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
+ * @param {Builder} builder - The builder instance.
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleHeaderHTML(builder) {
@@ -41,7 +43,7 @@ export async function runUserHandleHeaderHTML(builder) {
 
 /**
  * Runs the user's custom footer HTML handler.
- * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
+ * @param {Builder} builder - The builder instance.
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleFooterHTML(builder) {
