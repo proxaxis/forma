@@ -9,133 +9,79 @@ import { BrowserConfiguration } from '@/builder/configuration-browser.js';
 import { runUserHandleMarkdown, runUserHandleHTML, runUserHandleHeaderHTML, runUserHandleFooterHTML } from '@/builder/custom-user-hooks.js';
 import { runSystemHandleMarkdown, runSystemHandleHTML, runSystemHandleHeaderHTML, runSystemHandleFooterHTML } from '@/builder/custom-sys-hooks.js';
 
-const markdown = new Markdown();
-
-/**
- * Get the HTML template content by name.
- * @param {string} name
- * @returns {string}
- */
-function getHtmlTemplate(name) {
-  const item = htmlBuilderTemplates.find((template) => template.name === name);
-  return item?.content ?? '';
-}
-
-function getNonce() {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
+const markdownInstance = new Markdown();
 
 export class Builder {
-  /** @param {import('vscode').TextDocument} vscTextDocument - Document provided by VS Code */
+  /** @param {vsc.TextDocument} vscTextDocument - Document provided by VS Code */
   constructor(vscTextDocument) {
     this.vscTextDocument = vscTextDocument;
-    this.markdown = markdown;
+    this.markdown = markdownInstance;
     this.slugger = new GithubSlugger();
     this.cache = new Map();
   }
 
-  /**
-   * @returns {string}
-   */
   get rawMarkdownText() {
-    if (this.cache.has('rawMarkdownText')) {
-      return this.cache.get('rawMarkdownText');
-    }
+    if (this.cache.has('rawMarkdownText')) return this.cache.get('rawMarkdownText');
 
-    const text = this.vscTextDocument.getText();
-    const { content } = grMatter(text);
+    const { content } = grMatter(this.vscTextDocument.getText());
     this.cache.set('rawMarkdownText', content);
     return content;
   }
 
-  /**
-   * @param {string} value
-   */
-  set rawMarkdownText(value) {
-    this.cache.set('rawMarkdownText', value);
-  }
-
-  /**
-   * @returns {string}
-   */
   get rawHTMLText() {
-    if (this.cache.has('rawHTMLText')) {
-      return this.cache.get('rawHTMLText');
-    }
+    if (this.cache.has('rawHTMLText')) return this.cache.get('rawHTMLText');
 
     const html = this.markdown.render(this.rawMarkdownText);
     this.cache.set('rawHTMLText', html);
     return html;
   }
 
-  /**
-   * @param {string} value
-   */
-  set rawHTMLText(value) {
-    this.cache.set('rawHTMLText', value);
-  }
-
-  /**
-   * @returns {Record<string, any>}
-   */
   get frontmatter() {
-    if (this.cache.has('frontmatter')) {
-      return this.cache.get('frontmatter');
-    }
+    if (this.cache.has('frontmatter')) return this.cache.get('frontmatter');
 
     const { data } = grMatter(this.vscTextDocument.getText());
     this.cache.set('frontmatter', data);
     return data;
   }
 
-  /**
-   * @param {Record<string, any>} value
-   */
-  set frontmatter(value) {
-    this.cache.set('frontmatter', value);
-  }
-
-  /**
-   * @returns {string}
-   */
   get rawHeaderHTMLText() {
     return this.cache.get('rawHeaderHTMLText') ?? '';
   }
-
-  /**
-   * @param {string} value
-   */
-  set rawHeaderHTMLText(value) {
-    this.cache.set('rawHeaderHTMLText', value);
-  }
-
-  /**
-   * @returns {string}
-   */
   get rawFooterHTMLText() {
     return this.cache.get('rawFooterHTMLText') ?? '';
   }
 
-  /**
-   * @param {string} value
-   */
+  set rawMarkdownText(value) {
+    this.cache.set('rawMarkdownText', value);
+  }
+  set rawHTMLText(value) {
+    this.cache.set('rawHTMLText', value);
+  }
+  set frontmatter(value) {
+    this.cache.set('frontmatter', value);
+  }
+  set rawHeaderHTMLText(value) {
+    this.cache.set('rawHeaderHTMLText', value);
+  }
   set rawFooterHTMLText(value) {
     this.cache.set('rawFooterHTMLText', value);
   }
 
   /**
-   * Build the application configuration object (each Configuration instance).
+   * Generate an HTML-safe slug (GFM-based) from the given text.
+   * @param {string} text - The text to slugify.
+   * @returns {string} - The generated slug.
+   */
+  asHtmlSafeString(text) {
+    return this.slugger.slug(text);
+  }
+
+  /**
+   * Build the application configuration object.
    * @returns {Promise<{ theme: ThemeConfiguration, parser: ParserConfiguration, browser: BrowserConfiguration }>}
    */
   async buildConfig() {
-    if (this.cache.has('config')) {
-      return this.cache.get('config');
-    }
+    if (this.cache.has('config')) return this.cache.get('config');
 
     const vscTextDocumentUri = this.vscTextDocument.uri;
     const config = {
@@ -143,17 +89,8 @@ export class Builder {
       parser: new ParserConfiguration(vscTextDocumentUri, this.frontmatter.parser),
       browser: new BrowserConfiguration(vscTextDocumentUri, this.frontmatter.puppeteer),
     };
-
     this.cache.set('config', config);
     return config;
-  }
-
-  /**
-   * Get the application configuration object.
-   * @returns {{ theme: ThemeConfiguration, parser: ParserConfiguration, browser: BrowserConfiguration }|undefined}
-   */
-  get config() {
-    return this.cache.get('config');
   }
 
   /**
@@ -161,9 +98,7 @@ export class Builder {
    * @returns {Promise<import('markdown-it').Token[]>} - The generated Markdown tokens.
    */
   async buildTokens() {
-    if (this.cache.has('tokens')) {
-      return this.cache.get('tokens');
-    }
+    if (this.cache.has('tokens')) return this.cache.get('tokens');
 
     const tokens = this.markdown.parse(this.rawMarkdownText, {});
     this.cache.set('tokens', tokens);
@@ -171,87 +106,242 @@ export class Builder {
   }
 
   /**
-   * Get the application configuration object.
-   * @returns {{ theme: ThemeConfiguration, parser: ParserConfiguration, browser: BrowserConfiguration }|undefined}
+   * Build the HTML style variables for the preview.
+   * @param {string[][]} vars - An array of key-value pairs to be included in the style variables. e.g., [['--my-variable', 'value']].
+   * @returns {Promise<string>} - The generated HTML style variables.
    */
-  get tokens() {
-    return this.cache.get('tokens');
+  async buildHtmlStyleVariables(vars = []) {
+    const map = new Map();
+    const { browser } = await this.buildConfig();
+    const browserConfig = await browser.loadConfig();
+    map.set('--forma-page-margin-top', typeof browserConfig.margin.top === 'string' ? browserConfig.margin.top : '18mm');
+    map.set('--forma-page-margin-right', typeof browserConfig.margin.right === 'string' ? browserConfig.margin.right : '18mm');
+    map.set('--forma-page-margin-bottom', typeof browserConfig.margin.bottom === 'string' ? browserConfig.margin.bottom : '18mm');
+    map.set('--forma-page-margin-left', typeof browserConfig.margin.left === 'string' ? browserConfig.margin.left : '18mm');
+    map.set('--forma-page-width', typeof browserConfig.width === 'string' ? browserConfig.width : '18mm');
+    map.set('--forma-page-height', typeof browserConfig.height === 'string' ? browserConfig.height : '18mm');
+    map.set('--forma-page-format', typeof browserConfig.format === 'string' ? browserConfig.format : 'A4');
+    map.set('--forma-page-scale', typeof browserConfig.scale === 'number' ? browserConfig.scale : 1.0);
+
+    for (const [key, value] of vars) {
+      map.set(key, value);
+    }
+
+    return Array.from(map.entries())
+      .map(([key, value]) => `${key}: ${value};`)
+      .join(' ');
   }
 
   /**
-   * Generate an HTML-safe slug (GFM) from the given text.
-   * @param {string} text - The text to slugify.
-   * @returns {string} - The generated slug.
+   * Measure the rendered preview in Chromium and split it into A4-sized pages.
+   * @returns {Promise<string>}
    */
-  toHtmlSafeString(text) {
-    return this.slugger.slug(text);
+  async buildPaginatedHTML() {
+    const config = await this.buildConfig();
+    const browser = await config.browser.getBrowser();
+
+    try {
+      const page = await browser.newPage();
+
+      await page.setContent(this.rawHTMLText, { waitUntil: 'load' });
+      await page.evaluate(async () => {
+        const pageDocument = document;
+        await pageDocument.fonts.ready;
+        await Promise.all(
+          Array.from(pageDocument.images).map((image) =>
+            image.complete
+              ? undefined
+              : new Promise((resolve) => {
+                  image.addEventListener('load', resolve, { once: true });
+                  image.addEventListener('error', resolve, { once: true });
+                }),
+          ),
+        );
+      });
+
+      const pagedHtmlContainer = await page.evaluate(() => {
+        const pageDocument = document;
+        const header = pageDocument.querySelector('.forma-preview-page-header');
+        const footer = pageDocument.querySelector('.forma-preview-page-footer');
+        const contentContainer = pageDocument.querySelector('.forma-preview-page-content');
+        const contentNodes = (contentContainer ? Array.from(contentContainer.children) : Array.from(pageDocument.body.children)).filter((element) => element.tagName !== 'SCRIPT');
+        /** @type {HTMLElement[]} */
+        const pages = [];
+        let currentPage = null;
+
+        const createPage = () => {
+          const page = pageDocument.createElement('section');
+          page.className = 'forma-preview-page';
+
+          if (header) page.appendChild(header.cloneNode(true));
+
+          const pageContent = pageDocument.createElement('div');
+          pageContent.className = 'forma-preview-page-content';
+          page.appendChild(pageContent);
+
+          if (footer) page.appendChild(footer.cloneNode(true));
+          pages.push(page);
+          return { page, pageContent };
+        };
+
+        for (const node of contentNodes) {
+          if (node.matches('.page-break, [style*="page-break-after: always"], [style*="break-after: page"]')) {
+            currentPage = null;
+            continue;
+          }
+
+          if (!currentPage) currentPage = createPage();
+
+          currentPage.pageContent.appendChild(node);
+          if (currentPage.pageContent.scrollHeight > currentPage.pageContent.clientHeight && currentPage.pageContent.children.length > 1) {
+            currentPage.pageContent.removeChild(node);
+            currentPage = createPage();
+            currentPage.pageContent.appendChild(node);
+          }
+        }
+
+        return pages.map((page) => page.outerHTML).join('');
+      });
+
+      return pagedHtmlContainer;
+    } finally {
+      await browser.close();
+    }
   }
 
   /**
    * Generate the HTML body content from the Markdown source.
-   * @param {string} cspSource - Content Security Policy source for the HTML.
+   * @param {Object} [param] - The data to fill the template with.
+   * @param {string} [param.csp] - Content Security Policy source for the HTML.
+   * @param {(uri: vsc.Uri) => string} [param.resolveResourceUri] - Converts local resource URIs for the target renderer.
    * @returns {Promise<string>} - The generated HTML body content.
    */
-  async buildBodyHTML(cspSource = 'file:') {
+  async buildBodyHTML({ csp: cspSource = 'file:', resolveResourceUri = (vscUri) => vscUri.toString() } = {}) {
     const config = await this.buildConfig();
 
-    // Run user and system hooks for Markdown processing
     this.rawMarkdownText = await runUserHandleMarkdown(this);
     this.rawMarkdownText = await runSystemHandleMarkdown(this);
-
-    // Run user and system hooks for HTML processing
-    this.cache.delete('rawHTMLText');
     this.rawHTMLText = await runUserHandleHTML(this);
     this.rawHTMLText = await runSystemHandleHTML(this);
 
-    // Load the theme content if available
-    const theme = await config.theme.load(this.frontmatter.preview === true);
+    // If the print theme is enabled, wrap the content with header and footer for print theme.
+    if (config.theme.usePrintTheme) {
+      this.rawHeaderHTMLText = await this.buildHeaderHTML();
+      this.rawFooterHTMLText = await this.buildFooterHTML();
+      // Clone the header and footer in this.buildPagenatedHTML().
+      this.rawHTMLText = `
+        <div class="forma-preview-page-header">${this.rawHeaderHTMLText}</div>
+        <div class="forma-preview-page-content">${this.rawHTMLText}</div>
+        <div class="forma-preview-page-footer">${this.rawFooterHTMLText}</div>`;
+    }
 
-    // The base href is determined by the theme's URI, ensuring that relative paths in the HTML are resolved correctly.
+    const themeCssText = await config.theme.load();
+
+    // Determine the base href for relative paths in the HTML.
     const baseHref = (() => {
       if (!config.theme.fileUri) return '';
-      const themeDirUri = vsc.Uri.joinPath(config.theme.fileUri, '..');
-      const href = themeDirUri.toString();
+      const href = vsc.Uri.joinPath(config.theme.fileUri, '..').toString();
       return href.endsWith('/') ? href : `${href}/`;
     })();
 
-    const nonce = getNonce();
-    const csp = `default-src 'none'; img-src ${cspSource} https: data:; style-src ${cspSource} 'unsafe-inline'; font-src ${cspSource} https: data:; script-src 'nonce-${nonce}';`;
-    const template = getHtmlTemplate('template.skeleton.html');
+    // Construct the Content Security Policy (CSP) string.
+    const csp = (() => {
+      const map = new Map();
+      map.set('default-src', ["'none'"]);
+      map.set('img-src', [cspSource, 'https:', 'data:']);
+      map.set('font-src', [cspSource, 'https:', 'data:']);
+      map.set('style-src', [cspSource, 'data:']);
+      return Array.from(map.entries())
+        .map(([key, values]) => `${key} ${values.join(' ')}`)
+        .join('; ');
+    })();
 
-    if (template) {
-      this.rawHTMLText = template
-        .replace('___BASE_HREF___', this.markdown.utils.escapeHtml(baseHref))
-        .replace('___CSP___', this.markdown.utils.escapeHtml(csp))
-        .replace('/* ___THEME___ */', theme)
-        .replace('<!-- ___RAW_HTML___ -->', this.rawHTMLText)
-        .replace('___NONCE___', this.markdown.utils.escapeHtml(nonce));
+    const cssVariablesDataUri = getStyleSheetDataUri(`:root { ${await this.buildHtmlStyleVariables()} }`);
+    const themeCssDataUri = config.theme.fileUri && /\.css$/i.test(config.theme.fileUri.path) ? resolveResourceUri(config.theme.fileUri) : getStyleSheetDataUri(themeCssText);
+
+    const bodyCustomDataAttrs = (() => {
+      const map = new Map();
+      map.set('data-injected-by', 'forma');
+      map.set('data-forma-theme-name', config.theme.themeName);
+      return Array.from(map.entries())
+        .map(([key, value]) => `${key}="${this.markdown.utils.escapeHtml(value)}"`)
+        .join(' ');
+    })();
+
+    const bodyClassList = (() => {
+      const classArr = [];
+      if (config.theme.usePrintTheme) classArr.push('forma-preview-pages');
+      return classArr.join(' ');
+    })();
+
+    this.rawHTMLText = fillHtmlTemplate({ bodyText: this.rawHTMLText, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs });
+
+    if (config.theme.usePrintTheme) {
+      try {
+        const bodyContent = await this.buildPaginatedHTML();
+        this.rawHTMLText = fillHtmlTemplate({ bodyText: bodyContent, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs });
+      } catch {
+        // Keep the unpaginated preview when Chromium is unavailable.
+      }
     }
 
     return this.rawHTMLText;
   }
 
   /**
-   * Generate the HTML for the header and footer.
-   * @returns {Promise<{ header: string, footer: string }>}
+   * Generate the HTML for the header.
+   * @returns {Promise<string>} - The header HTML.
    */
-  async buildHeaderFooterHTML() {
-    await this.buildConfig();
-
-    this.rawHeaderHTMLText = getHtmlTemplate('template.header.html');
-    this.rawFooterHTMLText = getHtmlTemplate('template.footer.html');
-
-    // Run user and system hooks for header and footer processing
+  async buildHeaderHTML() {
+    if (this.cache.has('rawHeaderHTMLText')) return this.rawHeaderHTMLText;
+    this.rawHeaderHTMLText = htmlBuilderTemplates.find((template) => template.name === 'template.header.html')?.content ?? '';
     this.rawHeaderHTMLText = await runUserHandleHeaderHTML(this);
     this.rawHeaderHTMLText = await runSystemHandleHeaderHTML(this);
+    return this.rawHeaderHTMLText.replace(/\r?\n|\r/g, '');
+  }
 
-    // Run user and system hooks for footer processing
+  /**
+   * Generate the HTML for the footer.
+   * @returns {Promise<string>} - The footer HTML.
+   */
+  async buildFooterHTML() {
+    if (this.cache.has('rawFooterHTMLText')) return this.rawFooterHTMLText;
+    this.rawFooterHTMLText = htmlBuilderTemplates.find((template) => template.name === 'template.footer.html')?.content ?? '';
     this.rawFooterHTMLText = await runUserHandleFooterHTML(this);
     this.rawFooterHTMLText = await runSystemHandleFooterHTML(this);
-
-    return {
-      header: this.rawHeaderHTMLText,
-      footer: this.rawFooterHTMLText,
-    };
+    return this.rawFooterHTMLText.replace(/\r?\n|\r/g, '');
   }
+}
+
+/**
+ * Converts CSS content to a data URI.
+ * @param {string} content - The CSS content.
+ * @returns {string} - The data URI.
+ */
+function getStyleSheetDataUri(content) {
+  return `data:text/css;charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+/**
+ * Fills an HTML template with the provided data.
+ * @param {Object} param - The data to fill the template with.
+ * @param {string} param.bodyText - The text to insert into the body of the template.
+ * @param {string} param.baseHref - The base href to insert into the template.
+ * @param {string} param.csp - The Content Security Policy to insert into the template.
+ * @param {string} param.cssVariablesDataUri - The data URI for the CSS variables to insert into the template.
+ * @param {string} param.themeCssDataUri - The data URI for the theme CSS to insert into the template.
+ * @param {string} param.bodyClassList - The class list to insert into the body of the template.
+ * @param {string} param.bodyCustomDataAttrs - The custom data attributes to insert into the body of the template.
+ * @returns {string} - The filled HTML template.
+ */
+function fillHtmlTemplate({ bodyText, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs }) {
+  const template = htmlBuilderTemplates.find((template) => template.name === 'template.skeleton.html')?.content ?? '';
+  return template
+    .replace('___BASE_HREF___', markdownInstance.utils.escapeHtml(baseHref))
+    .replace('___CSP___', markdownInstance.utils.escapeHtml(csp))
+    .replace('___CSS_VARIABLES_DATA_URI___', markdownInstance.utils.escapeHtml(cssVariablesDataUri))
+    .replace('___THEME_CSS_DATA_URI___', markdownInstance.utils.escapeHtml(themeCssDataUri))
+    .replace('___BODY_CLASS___', bodyClassList)
+    .replace('___BODY_CUSTOM_DATA_ATTRS___', bodyCustomDataAttrs)
+    .replace('<!--___RAW_HTML___-->', bodyText);
 }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import vsc from 'vscode';
+import puppeteer from 'puppeteer-core';
 import { wsConfigTemplates } from '@/assets/constants.js';
 import { BaseConfiguration, asObject, asNotEmptyString, toUri } from '@/builder/configuration-base.js';
 
@@ -128,6 +129,10 @@ export class BrowserConfiguration extends BaseConfiguration {
    * @returns {Promise<Record<string, any>>}
    */
   async loadConfig() {
+    if (this.cache.has('puppeteerConfig')) {
+      return this.cache.get('puppeteerConfig');
+    }
+
     let content;
 
     if (this.fileUri) {
@@ -138,7 +143,9 @@ export class BrowserConfiguration extends BaseConfiguration {
     }
 
     try {
-      return JSON.parse(content);
+      const config = JSON.parse(content);
+      this.cache.set('puppeteerConfig', config);
+      return config;
     } catch (err) {
       const target = this.fileUri ? this.fileUri.toString() : 'constants.js (wsPuppeteerJson)';
       throw new Error(`Failed to parse Puppeteer config JSON: ${target}`, { cause: err });
@@ -152,5 +159,20 @@ export class BrowserConfiguration extends BaseConfiguration {
    */
   async resolveExecutablePath(overridePath) {
     return getBrowserExecutablePath(overridePath || this.configuredAppPath);
+  }
+
+  /**
+   * ブラウザを取得します。
+  * @returns {Promise<import('puppeteer-core').Browser>}
+   */
+  async getBrowser() {
+    const browserConfig = await this.loadConfig();
+    const browserExecutablePath = await this.resolveExecutablePath();
+    const { browserArguments = [] } = browserConfig ?? {};
+    return puppeteer.launch({
+      executablePath: browserExecutablePath,
+      headless: true,
+      args: browserArguments,
+    });
   }
 }

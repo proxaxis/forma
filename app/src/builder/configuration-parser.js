@@ -24,6 +24,10 @@ export class ParserConfiguration extends BaseConfiguration {
    * @returns {Promise<any>}
    */
   async load() {
+    if (this.cache.has('parserModule')) {
+      return this.cache.get('parserModule');
+    }
+    
     let moduleUrl;
 
     // Load the parser configuration from the specified file URI if available
@@ -37,6 +41,8 @@ export class ParserConfiguration extends BaseConfiguration {
     }
 
     const importedModule = await import(moduleUrl);
-    return importedModule.default ?? importedModule;
+    const module = importedModule.default ?? importedModule;
+    this.cache.set('parserModule', module);
+    return module;
   }
 }

@@ -30,7 +30,7 @@ export async function runSystemHandleMarkdown(builder) {
   const ignoreRegex = /<!--\s*IGNORE-TOC\s*-->/;
   const ignoreNumberingRegex = /<!--\s*IGNORE-NUM\s*-->/;
   const aliasRegex = /<!--\s*ID\[\s*([a-zA-Z0-9_\-]+)\s*\]\s*-->/;
-  const pageBreakRegex = /<!--\s*---\s*-->/;
+  const pageBreakRegex = /^---/;
   const numberingValue = builder.frontmatter.numbering;
   const numberingMatch = String(numberingValue ?? '')
     .trim()
@@ -49,6 +49,13 @@ export async function runSystemHandleMarkdown(builder) {
   // --- 1. トークン走査とメタデータ収集・ID注入 ---
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+
+    // Markdown-it parses a standalone `---` as an hr token rather than an HTML block.
+    if (token.type === 'hr' && token.markup === '---') {
+      token.type = 'html_block';
+      token.content = '<div style="page-break-after: always; break-after: page;"></div>';
+      continue;
+    }
 
     // HTML コメントの判定
     if (token.type === 'html_block' || token.type === 'html_inline') {
@@ -146,7 +153,7 @@ export async function runSystemHandleMarkdown(builder) {
       token.attrSet('id', uuid);
 
       // 見出しテキストを自動エイリアスとして登録
-      headlineIdAliasMap.set(builder.toHtmlSafeString(originalText), uuid);
+      headlineIdAliasMap.set(builder.asHtmlSafeString(originalText), uuid);
 
       // 明示的なエイリアスを登録
       if (pendingAlias) {
@@ -223,6 +230,7 @@ export async function runSystemHandleHTML(builder) {
  * @returns {Promise<string>} - The processed header HTML content.
  */
 export async function runSystemHandleHeaderHTML(builder) {
+  const config = await builder.buildConfig();
   const headerDirectives = builder.frontmatter.header ?? ['title', 'date'];
 
   const directives = (Array.isArray(headerDirectives) ? headerDirectives : [headerDirectives])
@@ -230,8 +238,8 @@ export async function runSystemHandleHeaderHTML(builder) {
     .map((val) => (typeof val === 'string' ? val.trim() : String(val).trim()))
     .filter((_, i) => i < 3); // Limit to 3 columns
 
-  const leftMargin = (await builder.config?.browser?.loadConfig())?.margin?.left ?? '0px';
-  const rightMargin = (await builder.config?.browser?.loadConfig())?.margin?.right ?? '0px';
+  const leftMargin = (await config.browser.loadConfig())?.margin?.left ?? '0px';
+  const rightMargin = (await config.browser.loadConfig())?.margin?.right ?? '0px';
   const headerHTMLStyleString = getStyleString(
     headerHTMLStyle.concat([
       ['margin-left', leftMargin],
@@ -305,8 +313,9 @@ export async function runSystemHandleFooterHTML(builder) {
     .map((val) => (typeof val === 'string' ? val.trim() : String(val).trim()))
     .filter((_, i) => i < 3); // Limit to 3 columns
 
-  const leftMargin = (await builder.config?.browser?.loadConfig())?.margin?.left ?? '0px';
-  const rightMargin = (await builder.config?.browser?.loadConfig())?.margin?.right ?? '0px';
+  const config = await builder.buildConfig();
+  const leftMargin = (await config.browser.loadConfig())?.margin?.left ?? '0px';
+  const rightMargin = (await config.browser.loadConfig())?.margin?.right ?? '0px';
   const footerHTMLStyleString = getStyleString(
     footerHTMLStyle.concat([
       ['margin-left', leftMargin],

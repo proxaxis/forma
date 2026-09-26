@@ -16,8 +16,9 @@ export class AppExporter {
     const builder = new Builder(vscTextDocument);
     const config = await builder.buildConfig();
     const docBodyTemplate = await builder.buildBodyHTML();
-    const docHeaderFooterTemplate = await builder.buildHeaderFooterHTML();
-    const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = await config.browser.loadConfig() || {};
+    const docHeaderTemplate = await builder.buildHeaderHTML();
+    const docFooterTemplate = await builder.buildFooterHTML();
+    const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = (await config.browser.loadConfig()) || {};
     const browserExecutablePath = await config.browser.resolveExecutablePath();
     const docOutputPath = path.join(path.dirname(vscTextDocument.uri.fsPath), destination, `${path.basename(vscTextDocument.uri.fsPath, path.extname(vscTextDocument.uri.fsPath))}.pdf`);
 
@@ -29,17 +30,28 @@ export class AppExporter {
     try {
       const page = await browser.newPage();
       await page.setContent(docBodyTemplate, { waitUntil: 'load' });
+      const exportStyleText = await config.theme.loadExport();
+      await page.addStyleTag({ url: `data:text/css;charset=utf-8,${encodeURIComponent(exportStyleText)}` });
+      await page.evaluate(() => {
+        document.querySelectorAll('.forma-preview-page-header, .forma-preview-page-footer').forEach((element) => {
+          element.style.display = 'none';
+        });
+
+        document.querySelectorAll('.forma-preview-page-content').forEach((element) => {
+          element.replaceWith(...Array.from(element.childNodes));
+        });
+      });
       await page.pdf({
         path: docOutputPath,
         displayHeaderFooter: true,
-        headerTemplate: docHeaderFooterTemplate.header,
-        footerTemplate: docHeaderFooterTemplate.footer,
+        headerTemplate: docHeaderTemplate,
+        footerTemplate: docFooterTemplate,
         ...puppeteerExportOptions,
       });
     } finally {
       await browser.close();
     }
-    
+
     const vscCommonConfiguration = vsc.workspace.getConfiguration('forma.common');
     if (vscCommonConfiguration.get('useAutoOpenPDF', true)) {
       await vsc.env.openExternal(vsc.Uri.file(docOutputPath));

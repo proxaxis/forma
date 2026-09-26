@@ -6,28 +6,14 @@
  * @property {function?} handleFooterHTML - A function to handle footer HTML content.
  */
 
-/** @type {CustomParserModule | null} */
-let parserModule = null;
-
-/**
- * Loads the custom parser module.
- * @param {import('@/builder/builder.js').Builder} builder
- * @returns {Promise<CustomParserModule | null>}
- */
-async function loadParserModule(builder) {
-  if (parserModule) return parserModule;
-
-  parserModule = await builder.config?.parser.load();
-  return parserModule;
-}
-
 /**
  * Runs the user's custom Markdown handler.
  * @param {import('@/builder/builder.js').Builder} builder - The builder instance.
  * @returns {Promise<string>} - The processed Markdown text.
  */
 export async function runUserHandleMarkdown(builder) {
-  const result = (await loadParserModule(builder))?.handleMarkdown?.(builder.rawMarkdownText, builder.frontmatter);
+  const config = await builder.buildConfig();
+  const result = (await config.parser.load())?.handleMarkdown?.(builder.rawMarkdownText, builder.frontmatter);
   return result ?? builder.rawMarkdownText;
 }
 
@@ -37,7 +23,8 @@ export async function runUserHandleMarkdown(builder) {
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleHTML(builder) {
-  const result = (await loadParserModule(builder))?.handleHTML?.(builder.rawHTMLText, builder.frontmatter);
+  const config = await builder.buildConfig();
+  const result = (await config.parser.load())?.handleHTML?.(builder.rawHTMLText, builder.frontmatter);
   return result ?? builder.rawHTMLText;
 }
 
@@ -47,7 +34,8 @@ export async function runUserHandleHTML(builder) {
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleHeaderHTML(builder) {
-  const result = (await loadParserModule(builder))?.handleHeaderHTML?.(builder.frontmatter, builder.rawHTMLText);
+  const config = await builder.buildConfig();
+  const result = (await config.parser.load())?.handleHeaderHTML?.(builder.frontmatter, builder.rawHTMLText);
   return result ?? builder.rawHeaderHTMLText;
 }
 
@@ -57,6 +45,7 @@ export async function runUserHandleHeaderHTML(builder) {
  * @returns {Promise<string>} - The processed HTML text.
  */
 export async function runUserHandleFooterHTML(builder) {
-  const result = await (await loadParserModule(builder))?.handleFooterHTML?.(builder.frontmatter, builder.rawHTMLText);
+  const config = await builder.buildConfig();
+  const result = (await config.parser.load())?.handleFooterHTML?.(builder.frontmatter, builder.rawHTMLText);
   return result ?? builder.rawFooterHTMLText;
 }

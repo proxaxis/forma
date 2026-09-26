@@ -1,5 +1,6 @@
 import wsDefaultScss from '@/assets/ws.default.scss?raw';
 import wsPrintScss from '@/assets/ws.print.scss?raw';
+import wsExportScss from '@/assets/ws.export.scss?raw';
 import wsParserJs from '@/assets/ws.parser.js?raw';
 import wsPuppeteerJson from '@/assets/ws.puppeteer.json?raw';
 import templateSkeletonHtml from '@/assets/template.skeleton.html?raw';
@@ -39,6 +40,7 @@ export const wsConfigTemplates = {
   list: [
     { content: wsDefaultScss, name: 'ws.default.scss', to: 'default.scss' },
     { content: wsPrintScss, name: 'ws.print.scss', to: 'print.scss' },
+    { content: wsExportScss, name: 'ws.export.scss', to: 'export.scss' },
     { content: wsParserJs, name: 'ws.parser.js', to: 'parser.js' },
     { content: wsPuppeteerJson, name: 'ws.puppeteer.json', to: 'puppeteer.json' },
   ],

@@ -69,6 +69,8 @@ export class BaseConfiguration {
         path: asNotEmptyString(item?.path),
       }))
       .filter((item) => (item.name && item.path));
+
+    this.cache = new Map();
   }
 
   /**

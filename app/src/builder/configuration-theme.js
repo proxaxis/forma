@@ -15,13 +15,13 @@ export class ThemeConfiguration extends BaseConfiguration {
     super(vscDocumentUri, 'theme');
 
     this.usePrintTheme = false;
+    this.themeName = themeName ?? this.entry ?? 'none';
     this.fileUri = undefined;
 
     if (themeName === 'print') {
       this.usePrintTheme = true;
       this.fileUri = this.getWorkspaceEntryUri('print.scss');
-    }
-    else {
+    } else {
       this.fileUri = this.getPresetUri(themeName) || this.getWorkspaceEntryUri();
     }
   }
@@ -32,6 +32,27 @@ export class ThemeConfiguration extends BaseConfiguration {
    * @returns {Promise<string>} The loaded stylesheet content, either as CSS or the original content if not SCSS.
    */
   async load() {
+    const fallbackTemplate = this.usePrintTheme ? wsConfigTemplates.getByName('ws.print.scss') : wsConfigTemplates.getByName('ws.default.scss');
+    return this.loadStylesheet(this.fileUri, fallbackTemplate?.content ?? '');
+  }
+
+  /**
+   * Returns the stylesheet used exclusively while exporting a PDF.
+   * @returns {Promise<string>} The compiled export stylesheet.
+   */
+  async loadExport() {
+    const exportFileUri = this.getWorkspaceEntryUri('export.scss');
+    const fallbackTemplate = wsConfigTemplates.getByName('ws.export.scss');
+    return this.loadStylesheet(exportFileUri, fallbackTemplate?.content ?? '');
+  }
+
+  /**
+   * Loads and compiles a stylesheet from a URI or fallback content.
+   * @param {vsc.Uri|undefined} fileUri - The stylesheet URI.
+   * @param {string} fallbackContent - Content used when the URI is unavailable.
+   * @returns {Promise<string>} The loaded stylesheet content.
+   */
+  async loadStylesheet(fileUri, fallbackContent) {
     /** @type {string} */
     let content;
     /** @type {boolean} */
@@ -42,17 +63,16 @@ export class ThemeConfiguration extends BaseConfiguration {
     let fileUrl;
 
     // Load the content from the specified file URI if available
-    if (this.fileUri) {
-      const fileBuffer = await vsc.workspace.fs.readFile(this.fileUri);
+    if (fileUri) {
+      const fileBuffer = await vsc.workspace.fs.readFile(fileUri);
       content = new TextDecoder().decode(fileBuffer);
-      isScss = /\.(scss|sass)$/i.test(this.fileUri.path);
-      syntax = this.fileUri.path.endsWith('.sass') ? 'indented' : 'scss';
-      fileUrl = this.fileUri.fsPath ? new URL(`file://${this.fileUri.fsPath}`) : undefined;
+      isScss = /\.(scss|sass)$/i.test(fileUri.path);
+      syntax = fileUri.path.endsWith('.sass') ? 'indented' : 'scss';
+      fileUrl = fileUri.fsPath ? new URL(`file://${fileUri.fsPath}`) : undefined;
     }
     // Fallback to the initial template if no URI is found
     else {
-      const fallbackTemplate = this.usePrintTheme ? wsConfigTemplates.getByName('ws.print.scss') : wsConfigTemplates.getByName('ws.default.scss');
-      content = fallbackTemplate?.content ?? '';
+      content = fallbackContent;
     }
 
     if (!isScss) return content;

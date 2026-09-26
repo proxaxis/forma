@@ -1,9 +1,14 @@
 import vsc from 'vscode';
+import { wsConfigDirectoryName } from '@/assets/constants.js';
 import { Builder } from '@/builder/builder.js';
 
 export class AppPreviewPanel {
   /** @type {AppPreviewPanel | null} */
   static current;
+  /** @type {vsc.TextDocument} */
+  vscTextDocument;
+  /** @type {vsc.Disposable[]} */
+  panelDisposables;
 
   /**
    * Show the preview panel for the currently active Markdown document.
@@ -24,11 +29,6 @@ export class AppPreviewPanel {
       return;
     }
 
-    const normalizedPath = vscTextEditor.document.uri.fsPath.replace(/\\/g, '/');
-    const lastSeparatorIndex = Math.max(normalizedPath.lastIndexOf('/'), normalizedPath.lastIndexOf('\\'));
-    const resourceRootFsPath = lastSeparatorIndex >= 0 ? normalizedPath.slice(0, lastSeparatorIndex) : vscTextEditor.document.uri.fsPath;
-    const resourceRootUri = resourceRootFsPath ? vsc.Uri.file(resourceRootFsPath) : undefined;
-
     const localResourceRoots = [];
 
     // 開いているドキュメントの親ディレクトリを追加
@@ -44,19 +44,15 @@ export class AppPreviewPanel {
     // 拡張機能自体のルートディレクトリ
     localResourceRoots.push(context.extensionUri);
 
-    const vscWebviewPanel = vsc.window.createWebviewPanel(
-      'forma.preview',
-      'Forma Preview',
-      vsc.ViewColumn.Two,
-      {
-        enableScripts: true,
-        localResourceRoots: localResourceRoots,
-      }
-    );
+    const vscWebviewPanel = vsc.window.createWebviewPanel('forma.preview', 'Forma Preview', vsc.ViewColumn.Two, {
+      enableScripts: true,
+      localResourceRoots: localResourceRoots,
+    });
 
     AppPreviewPanel.current = new AppPreviewPanel(vscWebviewPanel, vscTextEditor.document);
     vscWebviewPanel.onDidDispose(
       () => {
+        for (const disposable of AppPreviewPanel.current?.panelDisposables ?? []) disposable.dispose();
         AppPreviewPanel.current = null;
       },
       null,
@@ -69,6 +65,24 @@ export class AppPreviewPanel {
         }
       }),
     );
+
+    for (const workspaceFolder of vsc.workspace.workspaceFolders ?? []) {
+      const stylesheetWatcher = vsc.workspace.createFileSystemWatcher(new vsc.RelativePattern(workspaceFolder, `${wsConfigDirectoryName}/*.{css,scss,sass}`));
+      const refreshPreview = async (/** @type {vsc.Uri} */ uri) => {
+        const currentPanel = AppPreviewPanel.current;
+        if (!currentPanel) return;
+
+        const changedWorkspaceFolder = vsc.workspace.getWorkspaceFolder(uri);
+        const documentUri = currentPanel.vscTextDocument.uri;
+        const documentWorkspaceFolder = vsc.workspace.getWorkspaceFolder(documentUri);
+        if (changedWorkspaceFolder?.uri.toString() === documentWorkspaceFolder?.uri.toString()) {
+          await currentPanel.update(currentPanel.vscTextDocument);
+        }
+      };
+
+      AppPreviewPanel.current.panelDisposables.push(stylesheetWatcher, stylesheetWatcher.onDidChange(refreshPreview), stylesheetWatcher.onDidCreate(refreshPreview), stylesheetWatcher.onDidDelete(refreshPreview));
+    }
+
     await AppPreviewPanel.current.update(vscTextEditor.document);
   }
 
@@ -79,6 +93,7 @@ export class AppPreviewPanel {
   constructor(panel, document) {
     this.vscWebviewPanel = panel;
     this.vscTextDocument = document;
+    this.panelDisposables = [];
   }
 
   /**
@@ -88,7 +103,8 @@ export class AppPreviewPanel {
   async update(document) {
     this.vscTextDocument = document;
     try {
-      this.vscWebviewPanel.webview.html = await new Builder(document).buildBodyHTML(this.vscWebviewPanel.webview.cspSource);
+      const { webview } = this.vscWebviewPanel;
+      this.vscWebviewPanel.webview.html = await new Builder(document).buildBodyHTML({ csp: webview.cspSource, resolveResourceUri: (vscUri) => webview.asWebviewUri(vscUri).toString() });
     } catch (error) {
       this.vscWebviewPanel.webview.html = `<pre>Forma preview error: ${String(error)}</pre>`;
     }
