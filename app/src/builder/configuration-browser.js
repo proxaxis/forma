@@ -11,7 +11,7 @@ import { BaseConfiguration, asObject, asNotEmptyString, toUri } from '@/builder/
 const execFileAsync = promisify(execFile);
 
 /**
- * 指定パスのファイルが存在しアクセス可能か確認します。
+ * Checks whether a path exists and is accessible.
  * @param {string} executablePath
  * @returns {Promise<boolean>}
  */
@@ -25,7 +25,7 @@ async function isExecutable(executablePath) {
 }
 
 /**
- * OS ごとの標準的なブラウザ実行ファイルパスの一覧を返します。
+ * Returns standard browser executable paths for the current operating system.
  * @returns {string[]}
  */
 function standardPaths() {
@@ -57,7 +57,7 @@ function standardPaths() {
 }
 
 /**
- * PATH 環境変数上のコマンドから実行可能ファイルを探します。
+ * Finds a browser executable by searching commands on PATH.
  * @returns {Promise<string|undefined>}
  */
 async function findOnPath() {
@@ -74,15 +74,15 @@ async function findOnPath() {
       const executablePath = stdout.trim().split(/\r?\n/)[0];
       if (executablePath && (await isExecutable(executablePath))) return executablePath;
     } catch {
-      // 次のコマンド候補を継続探索
+      // Continue with the next candidate command.
     }
   }
   return undefined;
 }
 
 /**
- * ブラウザ実行ファイルのパスを解決します。
- * @param {string | undefined} configuredPath - 設定等から渡されたパス
+ * Resolves the browser executable path.
+ * @param {string | undefined} configuredPath - Path supplied by configuration.
  * @returns {Promise<string>}
  */
 export async function getBrowserExecutablePath(configuredPath) {
@@ -107,8 +107,8 @@ export class BrowserConfiguration extends BaseConfiguration {
   configuredAppPath;
 
   /**
-   * @param {vsc.Uri} vscDocumentUri - 対象ドキュメントの URI
-   * @param {string} [presetName] - frontmatter で指定された Puppeteer プリセット名
+  * @param {vsc.Uri} vscDocumentUri - URI of the target document.
+  * @param {string} [presetName] - Puppeteer preset selected in frontmatter.
    */
   constructor(vscDocumentUri, presetName) {
     super(vscDocumentUri, 'puppeteer');
@@ -125,7 +125,7 @@ export class BrowserConfiguration extends BaseConfiguration {
   }
 
   /**
-   * Puppeteer の設定 JSON オブジェクトを読み込んで返します。
+  * Loads the Puppeteer configuration JSON object.
    * @returns {Promise<Record<string, any>>}
    */
   async loadConfig() {
@@ -153,7 +153,7 @@ export class BrowserConfiguration extends BaseConfiguration {
   }
 
   /**
-   * ブラウザ実行可能ファイルのフルパスを解決して返します。
+  * Resolves the full path to the browser executable.
    * @param {string} [overridePath]
    * @returns {Promise<string>}
    */
@@ -162,7 +162,7 @@ export class BrowserConfiguration extends BaseConfiguration {
   }
 
   /**
-   * ブラウザを取得します。
+  * Launches a headless browser using the resolved configuration.
   * @returns {Promise<import('puppeteer-core').Browser>}
    */
   async getBrowser() {

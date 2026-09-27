@@ -155,13 +155,11 @@ hr {
   margin: 1.5em 0;
 }
 
-// 1. すべての code に共通する設定
 code {
   font-family: 'Fira Code', monospace;
   font-size: 0.75rem;
 }
 
-// 2. インラインコードのみ（pre の中にない code）
 :not(pre) > code {
   background-color: $bg-color-0;
   border-radius: $border-radius;
@@ -169,7 +167,6 @@ code {
   color: $text-color-inline-code;
 }
 
-// 3. コードブロック
 pre {
   background-color: $bg-color-0;
   border-radius: $border-radius;

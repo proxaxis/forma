@@ -285,7 +285,7 @@ export class Builder {
     if (config.theme.usePrintTheme) {
       this.rawHeaderHTMLText = await this.buildHeaderHTML();
       this.rawFooterHTMLText = await this.buildFooterHTML();
-      // Clone the header and footer in this.buildPagenatedHTML().
+      // The pagination step clones the header and footer onto each page.
       this.rawHTMLText = `
         <div class="forma-preview-page-header">${this.rawHeaderHTMLText}</div>
         <div class="forma-preview-page-content">${this.rawHTMLText}</div>

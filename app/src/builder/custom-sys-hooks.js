@@ -41,11 +41,11 @@ export async function runSystemHandleMarkdown(builder) {
   let tocToken = null;
   let tocConfig = null;
 
-  // --- 1. トークン走査とメタデータ収集・ID注入 ---
+  // --- 1. Scan tokens, collect metadata, and inject heading IDs. ---
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
 
-    // コードブロック内の Markdown は評価しない。
+    // Do not evaluate Markdown-like comments inside code blocks.
     if (token.type === 'fence' || token.type === 'code_block') {
       continue;
     }
@@ -57,15 +57,15 @@ export async function runSystemHandleMarkdown(builder) {
       continue;
     }
 
-    // HTML コメントの判定
+    // Inspect HTML comments for Forma directives.
     if (token.type === 'html_block' || token.type === 'html_inline') {
-      // 1-0. 改ページコメントの検出
+      // 1-0. Detect page-break directives.
       if (pageBreakRegex.test(token.content)) {
         token.content = '<div style="page-break-after: always; break-after: page;"></div>';
         continue;
       }
 
-      // 1-1. TOC コメントの検出
+      // 1-1. Detect the first table-of-contents directive.
       const tocMatch = token.content.match(tocRegex);
       if (tocMatch && !tocConfig) {
         tocToken = token;
@@ -82,7 +82,7 @@ export async function runSystemHandleMarkdown(builder) {
         continue;
       }
 
-      // 1-2. 直前の除外コメントの検出
+      // 1-2. Remember exclusions that apply to the next heading.
       if (ignoreRegex.test(token.content)) {
         pendingIgnore = true;
       }
@@ -95,7 +95,7 @@ export async function runSystemHandleMarkdown(builder) {
         continue;
       }
 
-      // 1-3. 直前の <!-- ID[alias] --> 検出
+      // 1-3. Remember an explicit alias for the next heading.
       const aliasMatch = token.content.match(aliasRegex);
       if (aliasMatch) {
         pendingAlias = aliasMatch[1];
@@ -103,7 +103,7 @@ export async function runSystemHandleMarkdown(builder) {
       }
     }
 
-    // 2. 見出しの処理 (heading_open)
+    // 2. Process each heading_open token.
     if (token.type === 'heading_open') {
       const level = Number(token.tag.replace('h', ''));
       const inlineToken = tokens[i + 1];
@@ -153,30 +153,30 @@ export async function runSystemHandleMarkdown(builder) {
         inlineToken.children.unshift(numberingToken);
       }
 
-      // 見出し要素に id 属性 (UUID) を付与
+      // Give the heading a unique ID.
       token.attrSet('id', uuid);
 
-      // 見出しテキストを自動エイリアスとして登録
+      // Register the normalized heading text as an automatic alias.
       headlineIdAliasMap.set(builder.asHtmlSafeString(originalText), uuid);
 
-      // 明示的なエイリアスを登録
+      // Register an explicit alias when one was provided.
       if (pendingAlias) {
         headlineIdAliasMap.set(pendingAlias, uuid);
       }
 
-      // IGNORE 指定がなければ目次用リストに含める
+      // Include the heading in the TOC unless it was excluded.
       if (!pendingIgnore) {
         headlines.push({ level, text, uuid, alias: pendingAlias });
       }
 
-      // フラグを初期化
+      // Reset directives before processing the next heading.
       pendingAlias = null;
       pendingIgnore = false;
       pendingIgnoreNumbering = false;
     }
   }
 
-  // --- 2. TOC コメントトークンを目次HTMLに置き換え ---
+  // --- 2. Replace the TOC comment token with generated HTML. ---
   if (tocToken && tocConfig) {
     const targetHeadings = headlines.filter((h) => h.level >= tocConfig.min && h.level <= tocConfig.max);
 
@@ -198,7 +198,7 @@ export async function runSystemHandleMarkdown(builder) {
           html += '</li>\n';
         }
       }
-      // アンカー先は常に UUID
+      // TOC links always target the generated UUID.
       html += `  <li><a href="#${h.uuid}">${h.text}</a>`;
       currentLevel = h.level;
     });
@@ -208,7 +208,7 @@ export async function runSystemHandleMarkdown(builder) {
     tocToken.content = html + '\n';
   }
 
-  // --- 3. 内部リンクのエイリアス解決用マップをトークンへ反映 ---
+  // --- 3. Resolve internal-link aliases in inline tokens. ---
   tokens.forEach((token) => {
     if (token.type !== 'inline' || !token.children) return;
 

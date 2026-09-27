@@ -9,7 +9,7 @@ import Prism from 'prismjs';
 import loadLanguages from 'prismjs/components/index.js';
 
 loadLanguages([
-  // Webフロント / スクリプト
+  // Web and scripting languages.
   'typescript',
   'json',
   'yaml',
@@ -17,7 +17,7 @@ loadLanguages([
   'bash',
   'shell-session',
 
-  // バックエンド / システム言語
+  // Backend and systems languages.
   'python',
   'php',
   'java',
@@ -30,7 +30,7 @@ loadLanguages([
   'kotlin',
   'swift',
 
-  // データベース・設定ファイル
+  // Database and configuration formats.
   'sql',
   'graphql',
   'docker',
@@ -121,7 +121,7 @@ export class ExtendedMarkdownIt extends MarkdownIt {
           return !!params.trim().match(/^[\w-]+$/);
         },
         /**
-         * Conposes the opening and closing HTML tags for the container.
+         * Composes the opening and closing HTML tags for the container.
          * @param {import('markdown-it').Token[]} tokens
          * @param {number} idx
          * @returns {string} The HTML for the container.

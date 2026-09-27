@@ -1,73 +1,63 @@
 # Forma
 
-Forma is a VS Code extension for writing Word-like documents in Markdown. It provides a live Webview preview and exports the active Markdown document to PDF with Puppeteer.
+Forma is a VS Code extension for authoring document-style Markdown. It renders a live preview in a Webview and exports the active Markdown document to PDF through `puppeteer-core`.
 
-## Features
+For end-user instructions, see [GUIDE.md](GUIDE.md) or [GUIDE-JP.md](GUIDE-JP.md).
 
-- `forma.preview` opens a live Markdown preview in the second editor group.
-- `forma.export` writes a PDF next to the active Markdown file.
-- `forma.initprojectconfig` creates a `.forma` directory with project-level defaults.
-- Markdown supports HTML, links, footnotes, task lists, containers, image sizing, anchors, and Prism code highlighting.
+## Developer Notes
 
-## Requirements
+### Runtime flow
 
-Run `npm install` with Node.js 24 or later. PDF export uses `puppeteer-core`; set `forma.puppeteer.appPath` when Chromium is not available through the default environment.
+`src/index.js` activates the extension and registers the commands declared in `package.json`:
 
-## Extension Settings
+- `forma.preview` creates one `WebviewPanel` in column two and refreshes it when the document or a workspace stylesheet changes.
+- `forma.export` builds the same document HTML, applies export CSS, and writes a PDF beside the source document by default.
+- `forma.initprojectconfig` creates `.forma` in the first workspace folder without overwriting existing files.
+- `forma.copyAnchor` copies a generated heading anchor to the clipboard.
 
-- `forma.theme`: CSS/SCSS defaults and named theme presets.
-- `forma.parser`: parser hook defaults and named parser presets.
-- `forma.puppeteer`: PDF presets, templates, and Chromium path.
-- `forma.common.useAutoPDFOpen`: open exported PDFs automatically.
+`Builder` is the rendering pipeline. It parses frontmatter with `gray-matter`, runs the selected user parser hooks, parses Markdown with `ExtendedMarkdownIt`, applies system heading/TOC/page-break processing, runs the HTML hook, and wraps the result in the skeleton template. The print theme additionally measures the rendered document in Chromium and divides it into page sections.
 
-Settings can be overridden per project in `.forma/` with `default.css` or `default.scss`, `parser.js`, `puppeteer.json`, `headerTemplate.html`, and `footerTemplate.html`. A Markdown frontmatter directive (`theme`, `parser`, or `puppeteer`) selects a named preset from the corresponding `list` setting.
+### Configuration resolution
 
-Header and footer content can be configured in frontmatter. The existing array form remains supported; use the object form to add CSS styles:
+`BaseConfiguration` reads `forma.theme`, `forma.parser`, or `forma.puppeteer` from the document's VS Code configuration. Each section has an `entry` file and named `libraries` containing `{ name, path }` entries. Paths may be filesystem paths or `file://` URIs.
 
-```yaml
-header:
-	items: [title, date]
-	style:
-		color: '#666'
-		font-size: 12px
-footer:
-	items: ['', '', page]
-	style: 'font-size: 9px; color: #888;'
+For parser and browser configuration, the effective file is selected in this order:
+
+1. The preset named by the document frontmatter.
+2. The section's `entry` file in the document's workspace `.forma` directory.
+3. The first configured library.
+4. The bundled asset in `src/assets`.
+
+Themes use the same first three choices except that `theme: print` selects `.forma/print.scss`; the bundled `ws.print.scss` is the fallback. `export.scss` is loaded separately for PDF output.
+
+Chromium resolution checks `forma.puppeteer.appPath`, `PUPPETEER_EXECUTABLE_PATH`, known OS installation paths, and finally commands on `PATH`. `puppeteerRunnerPath` is retained as configuration metadata but is not used by the current launcher.
+
+### Markdown and system directives
+
+`ExtendedMarkdownIt` enables raw HTML, hard line breaks, linkification, image sizing, custom blocks, containers, footnotes, task lists, link attributes, and Prism highlighting. Links receive `target="_blank"` and `rel="noopener"`; relative image paths are resolved against the document directory, while `@/path` resolves from the workspace root.
+
+System comments are processed outside fenced code blocks:
+
+- `<!-- TOC -->`, `<!-- TOC [N] -->`, and `<!-- TOC [N, M] -->` insert a table of contents.
+- `<!-- IGNORE-TOC -->` and `<!-- IGNORE-NUM -->` affect the following heading.
+- `<!-- ID[alias] -->` assigns an explicit heading alias.
+- A standalone `---` or a matching page-break HTML comment becomes a page break.
+
+Every heading receives a random ID. Automatic slugs and explicit aliases are resolved to that ID, so internal links remain stable within a rendered document.
+
+### Workspace assets
+
+The initialization command copies these bundled templates to `.forma/`: `default.scss`, `print.scss`, `export.scss`, `parser.js`, and `puppeteer.json`. The HTML skeleton and header/footer templates remain extension assets and are filled by `Builder`.
+
+Parser hooks are asynchronous and use positional arguments: `handleMarkdown(content, frontmatter)`, `handleHTML(html, frontmatter)`, `handleHeaderHTML(html, frontmatter)`, and `handleFooterHTML(html, frontmatter)`. Returning `undefined` leaves the input unchanged.
+
+### Development
+
+```bash
+npm install
+npm run lint
+npm run build
+npm test
 ```
 
-Styles can also be set for each item. Use `value` (or `content`, `item`, or `name`) for the directive value:
-
-```yaml
-header:
-	items:
-		- value: title
-		  style:
-			font-weight: bold
-		- value: date
-		  style: 'color: #888; font-size: 9px'
-```
-
-## Known Issues
-
-The VS Code integration tests require a display server when run in a Linux container. Use `xvfb-run npm test` in CI or a desktop environment.
-
-## Release Notes
-
-### 0.0.1
-
-Initial Forma implementation.
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-- Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-- Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-- Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+The integration tests need a display server on Linux containers. Use `xvfb-run npm test` in CI when no desktop display is available.

@@ -31,17 +31,17 @@ export class AppPreviewPanel {
 
     const localResourceRoots = [];
 
-    // 開いているドキュメントの親ディレクトリを追加
+    // Allow resources next to the open document.
     localResourceRoots.push(vsc.Uri.joinPath(vscTextEditor.document.uri, '..'));
 
-    // 開いているワークスペースディレクトリの URI を追加
+    // Allow resources from open workspace folders.
     if (vsc.workspace.workspaceFolders) {
       for (const folder of vsc.workspace.workspaceFolders) {
         localResourceRoots.push(folder.uri);
       }
     }
 
-    // 拡張機能自体のルートディレクトリ
+    // Allow bundled assets from the extension directory.
     localResourceRoots.push(context.extensionUri);
 
     const vscWebviewPanel = vsc.window.createWebviewPanel('forma.preview', 'Forma Preview', vsc.ViewColumn.Two, {
