@@ -30,27 +30,16 @@ async function isExecutable(executablePath) {
  */
 function standardPaths() {
   if (process.platform === 'linux') {
-    return [
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable',
-    ];
+    return ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'];
   }
   if (process.platform === 'darwin') {
-    return [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    ];
+    return ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Chromium.app/Contents/MacOS/Chromium'];
   }
   if (process.platform === 'win32') {
     const roots = [process.env.LOCALAPPDATA, process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)']].filter(Boolean);
     return roots.flatMap((root) => {
       if (!root) return [];
-      return [
-        path.join(root, 'Google/Chrome/Application/chrome.exe'),
-        path.join(root, 'Microsoft/Edge/Application/msedge.exe'),
-      ];
+      return [path.join(root, 'Google/Chrome/Application/chrome.exe'), path.join(root, 'Microsoft/Edge/Application/msedge.exe')];
     });
   }
   return [];
@@ -61,12 +50,7 @@ function standardPaths() {
  * @returns {Promise<string|undefined>}
  */
 async function findOnPath() {
-  const commands =
-    process.platform === 'win32'
-      ? ['chrome.exe', 'msedge.exe']
-      : process.platform === 'darwin'
-        ? ['chromium', 'google-chrome', 'Google Chrome']
-        : ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable'];
+  const commands = process.platform === 'win32' ? ['chrome.exe', 'msedge.exe'] : process.platform === 'darwin' ? ['chromium', 'google-chrome', 'Google Chrome'] : ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable'];
 
   for (const command of commands) {
     try {
@@ -93,9 +77,7 @@ export async function getBrowserExecutablePath(configuredPath) {
   const pathExecutable = await findOnPath();
   if (pathExecutable) return pathExecutable;
 
-  throw new Error(
-    `Could not find Chromium or Google Chrome. Set forma.puppeteer.appPath or PUPPETEER_EXECUTABLE_PATH. Searched on ${os.platform()}.`
-  );
+  throw new Error(`Could not find Chromium or Google Chrome. Set forma.puppeteer.puppeteerRunnerPath or PUPPETEER_EXECUTABLE_PATH. Searched on ${os.platform()}.`);
 }
 
 export class BrowserConfiguration extends BaseConfiguration {
@@ -103,29 +85,21 @@ export class BrowserConfiguration extends BaseConfiguration {
   fileUri;
   /** @type {vsc.Uri|undefined} */
   runnerFileUri;
-  /** @type {string|undefined} */
-  configuredAppPath;
-
   /**
-  * @param {vsc.Uri} vscDocumentUri - URI of the target document.
-  * @param {string} [presetName] - Puppeteer preset selected in frontmatter.
+   * @param {vsc.Uri} vscDocumentUri - URI of the target document.
+   * @param {string} [presetName] - Puppeteer preset selected in frontmatter.
    */
   constructor(vscDocumentUri, presetName) {
     super(vscDocumentUri, 'puppeteer');
 
     const rawConfig = asObject(vsc.workspace.getConfiguration('forma', this.vscDocumentUri).get('puppeteer', {}));
     const rawRunnerPath = asNotEmptyString(rawConfig.puppeteerRunnerPath);
-    this.configuredAppPath = asNotEmptyString(rawConfig.appPath);
-
     this.runnerFileUri = rawRunnerPath ? toUri(rawRunnerPath) : undefined;
-    this.fileUri =
-      this.getPresetUri(presetName) ||
-      this.getWorkspaceEntryUri() ||
-      this.getPresetUri(this.libraries[0]?.name);
+    this.fileUri = this.getPresetUri(presetName) || this.getWorkspaceEntryUri() || this.getPresetUri(this.libraries[0]?.name);
   }
 
   /**
-  * Loads the Puppeteer configuration JSON object.
+   * Loads the Puppeteer configuration JSON object.
    * @returns {Promise<Record<string, any>>}
    */
   async loadConfig() {
@@ -139,7 +113,7 @@ export class BrowserConfiguration extends BaseConfiguration {
       const fileBuffer = await vsc.workspace.fs.readFile(this.fileUri);
       content = new TextDecoder().decode(fileBuffer);
     } else {
-      content = (wsConfigTemplates.getByName('ws.puppeteer.json')).content;
+      content = wsConfigTemplates.getByName('ws.puppeteer.json').content;
     }
 
     try {
@@ -153,17 +127,17 @@ export class BrowserConfiguration extends BaseConfiguration {
   }
 
   /**
-  * Resolves the full path to the browser executable.
+   * Resolves the full path to the browser executable.
    * @param {string} [overridePath]
    * @returns {Promise<string>}
    */
   async resolveExecutablePath(overridePath) {
-    return getBrowserExecutablePath(overridePath || this.configuredAppPath);
+    return getBrowserExecutablePath(overridePath);
   }
 
   /**
-  * Launches a headless browser using the resolved configuration.
-  * @returns {Promise<import('puppeteer-core').Browser>}
+   * Launches a headless browser using the resolved configuration.
+   * @returns {Promise<import('puppeteer-core').Browser>}
    */
   async getBrowser() {
     const browserConfig = await this.loadConfig();

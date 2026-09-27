@@ -18,6 +18,7 @@
     "onLanguage:markdown"
   ],
   "categories": [
+    "Visualization",
     "Other"
   ],
   "main": "./dist/extension.cjs",
@@ -25,17 +26,17 @@
     "commands": [
       {
         "command": "forma.preview",
-        "title": "MD: Open Preview",
+        "title": "Forma: Open Preview",
         "icon": "$(open-preview)"
       },
       {
         "command": "forma.export",
-        "title": "MD: Export PDF",
+        "title": "Forma: Export PDF",
         "icon": "$(file-pdf)"
       },
       {
-        "command": "forma.initprojectconfig",
-        "title": "MD: Initialize Forma Project Config"
+        "command": "forma.initialization",
+        "title": "Forma: Initialize Project Config"
       }
     ],
     "menus": {
@@ -56,8 +57,8 @@
       "title": "Forma",
       "properties": {
         "forma.theme": {
-          "type": "object",
           "description": "Theme files available to Forma.",
+          "type": "object",
           "default": {
             "entry": "default.scss",
             "libraries": [
@@ -66,26 +67,26 @@
           }
         },
         "forma.parser": {
+          "description": "Parser hooks available to Forma.",
           "type": "object",
           "default": {
             "entry": "parser.js",
             "libraries": []
-          },
-          "description": "Parser hooks available to Forma."
+          }
         },
         "forma.puppeteer": {
+          "description": "PDF presets and Chromium settings for Forma.",
           "type": "object",
           "default": {
             "entry": "puppeteer.json",
             "libraries": [],
             "puppeteerRunnerPath": ""
-          },
-          "description": "PDF presets and Chromium settings for Forma."
+          }
         },
         "forma.common.useAutoOpenPDF": {
+          "description": "Open the exported PDF after it is created.",
           "type": "boolean",
-          "default": false,
-          "description": "Open the exported PDF after it is created."
+          "default": false
         }
       }
     }

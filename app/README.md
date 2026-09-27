@@ -1,74 +1,340 @@
+<style>
+* {
+  text-autospace: normal;
+}
+
+.warn {
+  position: relative;
+  margin: 1.2em 0;
+  padding: 12px 16px 12px 42px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 4px;
+  color: #78350f;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.warn::before {
+  content: "⚠️";
+  position: absolute;
+  left: 14px;
+  top: 13px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.warn code {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #92400e;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .warn {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.35);
+    border-left: 4px solid #f59e0b;
+    color: #fef3c7;
+  }
+
+  .warn code {
+    background-color: rgba(245, 158, 11, 0.25);
+    color: #fde68a;
+  }
+}
+
+details {
+  margin: 1em 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  overflow: hidden;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+details[open] {
+  border-color: #cbd5e1;
+  background-color: #ffffff;
+}
+
+details > summary {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: color 0.15s ease;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  background-color: #64748b;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>') no-repeat center / contain;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>') no-repeat center / contain;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+details > summary:hover {
+  color: #0f172a;
+}
+details > summary:hover::before {
+  background-color: #0f172a;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details[open] > summary {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+details .content {
+  padding: 12px 16px;
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: #475569;
+}
+
+details .content pre {
+  margin: 0.5em 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  details {
+    border-color: #334155;
+    background-color: #1e293b;
+  }
+
+  details[open] {
+    border-color: #475569;
+    background-color: #0f172a;
+  }
+
+  details > summary {
+    color: #e2e8f0;
+  }
+
+  details > summary::before {
+    background-color: #94a3b8;
+  }
+
+  details > summary:hover {
+    color: #ffffff;
+  }
+  details > summary:hover::before {
+    background-color: #ffffff;
+  }
+
+  details[open] > summary {
+    border-bottom-color: #1e293b;
+  }
+
+  details .content {
+    color: #cbd5e1;
+  }
+}
+</style>
+
 # Forma User Guide
 
-Forma turns Markdown into a document-oriented live preview and a PDF. Open a Markdown file, then use the preview or PDF button in the editor title bar, or run the commands from the Command Palette.
+Forma is a VS Code extension that converts Markdown into live document previews and PDFs. Open a Markdown file and use the Preview or PDF buttons in the editor title bar, or run commands from the Command Palette.
 
-[Japanese version](./README.jp.md)
+Japanese Version: [日本語版](README.jp.md).
 
-## First Setup
+## Initial Setup
 
-1. Open a VS Code workspace containing your Markdown document.
-2. Run **MD: Initialize Forma Project Config** once if you want project-local templates.
-3. Edit the generated files under `.forma/` and open the preview with **MD: Open Preview**.
+1. Open a VS Code workspace containing your Markdown files.
+2. If using project-specific templates, run `Forma: Initialize Project Config` once.
+3. Edit the files generated inside the `.forma` directory at the root of the workspace, then open the preview with `Forma: Open Preview`.
 
-The initializer never replaces files that already exist. Without `.forma` files, Forma uses its bundled defaults.
+This initialization command does not overwrite existing files. If a target file does not exist in the `.forma` directory, the extension's built-in defaults are used.
 
-## Exporting a PDF
+## Exporting PDF
 
-Run **MD: Export PDF** with a Markdown document active. The default output is `<document-name>.pdf` beside the Markdown file. The PDF uses `.forma/export.scss` and the Puppeteer settings from `puppeteer.json`.
+With the Markdown file active, run `Forma: Export PDF`. By default, `<filename>.pdf` is created in the same directory as the target Markdown file. The PDF uses the configurations defined in `.forma/export.scss` and `puppeteer.json`.
 
-Forma needs Chromium or Google Chrome. Set `forma.puppeteer.appPath` to its executable path when it cannot be found automatically. You can also set `PUPPETEER_EXECUTABLE_PATH` in the environment.
+<div class="warn">
 
-Set `forma.common.useAutoOpenPDF` to `false` to keep the PDF from opening automatically.
+PDF export requires Chromium or Google Chrome. If it cannot be detected automatically, specify the executable path in the VS Code setting `forma.puppeteer.puppeteerRunnerPath`. The environment variable `PUPPETEER_EXECUTABLE_PATH` can also be used.
+
+</div>
+
+If you want the PDF to open automatically after export, set `forma.common.useAutoOpenPDF` to `true`. The default is `false`.
 
 ## Project Files
 
-`.forma/` may contain:
+As described in [Initial Setup](#initial-setup), running `Forma: Initialize Project Config` creates a `.forma` directory directly under the workspace root. This is the Forma configuration directory dedicated to that workspace. You can place the following files here:
 
-- `default.scss`: preview theme used by default.
-- `print.scss`: paginated preview theme selected with `theme: print`.
-- `export.scss`: PDF-only styles.
-- `parser.js`: optional content transformation hooks.
-- `puppeteer.json`: PDF size, margins, browser arguments, and output destination.
+* `default.scss`: Standard preview theme
+* `print.scss`: Print preview theme applied when selected via `theme: print`
+* `export.scss`: Dedicated theme used during PDF export
+* `parser.js`: Defines hooks for transforming Markdown and HTML
+* `puppeteer.json`: Settings for paper size, margins, browser launch arguments, destination, etc.
 
-The `forma.theme`, `forma.parser`, and `forma.puppeteer` settings support named libraries. A document can select one with frontmatter:
+By defining `forma.theme.libraries`, `forma.parser.libraries`, and `forma.puppeteer.libraries` in your VS Code settings, you can use named libraries. For example:
 
-```yaml
----
-theme: print
-parser: my-parser
-puppeteer: book
----
+```json
+// VSCode Configuration
+{
+  "forma.theme.libraries": [{ "name": "foo", "path": "@/path/to/foo.scss" }]
+}
+
 ```
 
-## Frontmatter
+*Note: `@` is an alias representing the workspace root directory.*
 
-Use `numbering: 1-3` to number headings from level 1 through level 3. Header and footer items support `title`, `date`, `page`, or literal text. Each side has up to three items.
+With this configured, you can select and use it from the Markdown front matter like this:
 
 ```yaml
 ---
+theme: foo
+---
+
+```
+
+You can also change the names of configuration files to load by modifying `forma.theme.entry`, `forma.parser.entry`, and `forma.puppeteer.entry`.
+
+## Front Matter
+
+In default Forma, the following front matter properties are available:
+
+* `theme`: Specifies the named theme to use
+* `parser`: Specifies the named parser to use
+* `puppeteer`: Specifies the named Puppeteer configuration to use
+* `numbering`: Adds numbers to the beginning of specified headings
+* `header`: Defines document header content
+* `footer`: Defines document footer content
+
+These front matter properties are used as follows:
+
+```yaml
+---
+theme: foo
+parser: var
+puppeteer: hoge
 numbering: 1-3
 header:
-  - item: title
-    style: font-weight: bold
-  - item: date
-footer: ['', '', page]
+  - Top-left header
+  - Top-center header
+  - Top-right header
+footer:
+  - Bottom-left footer
+  - Bottom-center footer
+  - Bottom-right footer
 ---
+
 ```
+
+### Details on Numbering
+
+`numbering` accepts a `number` or `hyphen-separated numbers`. For example, specifying `1` prefixes level 1 headings (`# Heading`) with a number, displaying them as `# 1. Heading`. Numbers are sequential starting from 1 and are applied to all headings at the same level; however, any heading immediately following `<!-- IGNORE-NUM -->` is excluded from the sequential count.
+
+### Details on Headers and Footers
+
+#### Specification Method
+
+Specify 2 or 3 strings for `header` and `footer`. When 2 strings are provided, they appear on the left and right; when 3 are provided, they appear on the left, center, and right. The following special variables can also be used:
+
+* `title`: Displays the first level 1 heading in the page
+* `date`: Displays the date of printing or previewing in `YYYY-MM-DD` format
+* `page`: Displays the page number
+
+#### Styling
+
+Headers and footers can be styled in two places.
+
+First is `defaultHeaderFooterFont` inside `puppeteer.json`. Here, you can specify shared properties for both headers and footers, such as `size` (font size) and `color` (text color). For example:
+
+```json
+// puppeteer.json
+"defaultHeaderFooterFont": {
+  "size": "12px",
+  "color": "#ff0000"
+}
+
+```
+
+With this setting, the font size of the header and footer becomes 12px, and the text color becomes red.
+
+Second is directly within the front matter:
+
+```yaml
+---
+header:
+  - item: Bottom-right footer
+    style: "font-size: 12px; color: #ff0000"
+  - Top-right header
+---
+
+```
+
+With this configuration, only "Bottom-right footer" will be styled in red with a 12px font size.
 
 ## Document Directives
 
-Use these HTML comments in Markdown:
+The following directives can be used within Markdown:
 
-- `<!-- TOC -->` creates a table of contents for levels 1 through 6.
-- `<!-- TOC [2] -->` limits it to levels 1 through 2.
-- `<!-- TOC [2, 4] -->` includes levels 2 through 4.
-- `<!-- IGNORE-TOC -->` excludes the next heading from the table of contents.
-- `<!-- IGNORE-NUM -->` excludes the next heading from numbering.
-- `<!-- ID[custom-id] -->` gives the next heading an internal-link alias.
-- A line containing `---` creates a page break.
+* `<!-- TOC -->`: Creates a table of contents from level 1 to 6.
+* `<!-- TOC[2] -->`: Restricts the table of contents to levels 1 through 2.
+* `<!-- TOC[2,4] -->`: Includes levels 2 through 4.
+* `<!-- IGNORE-TOC -->`: Excludes the next heading from the table of contents.
+* `<!-- IGNORE-NUM -->`: Excludes the next heading from [numbering](https://www.google.com/search?q=%2523details-on-numbering&utm_source=gemini).
+* `<!-- ID[custom-id] -->`: Sets an alias on the next heading for internal linking.
+* A line containing only `---`: Inserts a page break.
 
-Forma supports HTML, footnotes, task lists, image dimensions such as `![Alt](image.png =320x200)`, containers, automatic links, and Prism highlighting for common programming and configuration languages.
+HTML, footnotes, task lists, image sizing like `![Alt](image.png =320x200)`, containers, autolinks, and Prism syntax highlighting for major programming languages and configuration formats are supported.
 
-## Images and Output Paths
+**Web and scripting languages**
 
-Relative images are resolved from the Markdown file. Paths beginning with `@/` are resolved from the workspace root. In `puppeteer.json`, `destination: "."` writes beside the source file; `destination: "@"` writes at the workspace root, and `destination: "@/exports"` writes below it.
+* `typescript`
+* `json`
+* `yaml`
+* `markdown`
+* `bash`
+* `shell-session`
+
+**Backend and systems languages**
+
+* `python`
+* `php`
+* `java`
+* `c`
+* `cpp`
+* `csharp`
+* `go`
+* `rust`
+* `ruby`
+* `kotlin`
+* `swift`
+
+**Database and configuration formats**
+
+* `sql`
+* `graphql`
+* `docker`
+* `ini`
+* `toml`
+
+## Images and Output Destinations
+
+Images with relative paths are resolved relative to the Markdown file. Paths beginning with `@/` are resolved relative to the workspace root. In `puppeteer.json`, `destination: "."` outputs the PDF to the same directory as the source file, `destination: "@"` outputs to the workspace root, and `destination: "@/exports"` outputs to an `exports` directory beneath it.
+
+```
