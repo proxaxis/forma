@@ -3,7 +3,7 @@
   "displayName": "Forma: Build Markdown Document",
   "description": "Let's create documents in Markdown!",
   "publisher": "proxaxis",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "repository": {
     "type": "git",
@@ -62,7 +62,10 @@
           "default": {
             "entry": "default.scss",
             "libraries": [
-              { "name": "print", "path": "this-is-reserved-name" }
+              {
+                "name": "print",
+                "path": "this-is-reserved-name"
+              }
             ]
           }
         },
