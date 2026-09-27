@@ -1,9 +1,16 @@
 {
-  "name": "forma",
-  "displayName": "Forma",
+  "name": "bolt-vsc-forma",
+  "displayName": "Forma: Build Markdown Document",
   "description": "Let's create documents in Markdown!",
+  "publisher": "proxaxis",
   "version": "0.0.1",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proxaxis/forma"
+  },
+  "icon": "./public/icon.png",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.136.0"
   },
@@ -84,6 +91,7 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run build",
     "build": "vite build",
     "lint": "eslint src test eslint.config.mjs",
     "pretest": "npm run lint && npm run build",

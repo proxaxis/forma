@@ -1,63 +1,74 @@
-# Forma
+# Forma User Guide
 
-Forma is a VS Code extension for authoring document-style Markdown. It renders a live preview in a Webview and exports the active Markdown document to PDF through `puppeteer-core`.
+Forma turns Markdown into a document-oriented live preview and a PDF. Open a Markdown file, then use the preview or PDF button in the editor title bar, or run the commands from the Command Palette.
 
-For end-user instructions, see [GUIDE.md](GUIDE.md) or [GUIDE-JP.md](GUIDE-JP.md).
+[Japanese version](./README.jp.md)
 
-## Developer Notes
+## First Setup
 
-### Runtime flow
+1. Open a VS Code workspace containing your Markdown document.
+2. Run **MD: Initialize Forma Project Config** once if you want project-local templates.
+3. Edit the generated files under `.forma/` and open the preview with **MD: Open Preview**.
 
-`src/index.js` activates the extension and registers the commands declared in `package.json`:
+The initializer never replaces files that already exist. Without `.forma` files, Forma uses its bundled defaults.
 
-- `forma.preview` creates one `WebviewPanel` in column two and refreshes it when the document or a workspace stylesheet changes.
-- `forma.export` builds the same document HTML, applies export CSS, and writes a PDF beside the source document by default.
-- `forma.initprojectconfig` creates `.forma` in the first workspace folder without overwriting existing files.
-- `forma.copyAnchor` copies a generated heading anchor to the clipboard.
+## Exporting a PDF
 
-`Builder` is the rendering pipeline. It parses frontmatter with `gray-matter`, runs the selected user parser hooks, parses Markdown with `ExtendedMarkdownIt`, applies system heading/TOC/page-break processing, runs the HTML hook, and wraps the result in the skeleton template. The print theme additionally measures the rendered document in Chromium and divides it into page sections.
+Run **MD: Export PDF** with a Markdown document active. The default output is `<document-name>.pdf` beside the Markdown file. The PDF uses `.forma/export.scss` and the Puppeteer settings from `puppeteer.json`.
 
-### Configuration resolution
+Forma needs Chromium or Google Chrome. Set `forma.puppeteer.appPath` to its executable path when it cannot be found automatically. You can also set `PUPPETEER_EXECUTABLE_PATH` in the environment.
 
-`BaseConfiguration` reads `forma.theme`, `forma.parser`, or `forma.puppeteer` from the document's VS Code configuration. Each section has an `entry` file and named `libraries` containing `{ name, path }` entries. Paths may be filesystem paths or `file://` URIs.
+Set `forma.common.useAutoOpenPDF` to `false` to keep the PDF from opening automatically.
 
-For parser and browser configuration, the effective file is selected in this order:
+## Project Files
 
-1. The preset named by the document frontmatter.
-2. The section's `entry` file in the document's workspace `.forma` directory.
-3. The first configured library.
-4. The bundled asset in `src/assets`.
+`.forma/` may contain:
 
-Themes use the same first three choices except that `theme: print` selects `.forma/print.scss`; the bundled `ws.print.scss` is the fallback. `export.scss` is loaded separately for PDF output.
+- `default.scss`: preview theme used by default.
+- `print.scss`: paginated preview theme selected with `theme: print`.
+- `export.scss`: PDF-only styles.
+- `parser.js`: optional content transformation hooks.
+- `puppeteer.json`: PDF size, margins, browser arguments, and output destination.
 
-Chromium resolution checks `forma.puppeteer.appPath`, `PUPPETEER_EXECUTABLE_PATH`, known OS installation paths, and finally commands on `PATH`. `puppeteerRunnerPath` is retained as configuration metadata but is not used by the current launcher.
+The `forma.theme`, `forma.parser`, and `forma.puppeteer` settings support named libraries. A document can select one with frontmatter:
 
-### Markdown and system directives
-
-`ExtendedMarkdownIt` enables raw HTML, hard line breaks, linkification, image sizing, custom blocks, containers, footnotes, task lists, link attributes, and Prism highlighting. Links receive `target="_blank"` and `rel="noopener"`; relative image paths are resolved against the document directory, while `@/path` resolves from the workspace root.
-
-System comments are processed outside fenced code blocks:
-
-- `<!-- TOC -->`, `<!-- TOC [N] -->`, and `<!-- TOC [N, M] -->` insert a table of contents.
-- `<!-- IGNORE-TOC -->` and `<!-- IGNORE-NUM -->` affect the following heading.
-- `<!-- ID[alias] -->` assigns an explicit heading alias.
-- A standalone `---` or a matching page-break HTML comment becomes a page break.
-
-Every heading receives a random ID. Automatic slugs and explicit aliases are resolved to that ID, so internal links remain stable within a rendered document.
-
-### Workspace assets
-
-The initialization command copies these bundled templates to `.forma/`: `default.scss`, `print.scss`, `export.scss`, `parser.js`, and `puppeteer.json`. The HTML skeleton and header/footer templates remain extension assets and are filled by `Builder`.
-
-Parser hooks are asynchronous and use positional arguments: `handleMarkdown(content, frontmatter)`, `handleHTML(html, frontmatter)`, `handleHeaderHTML(html, frontmatter)`, and `handleFooterHTML(html, frontmatter)`. Returning `undefined` leaves the input unchanged.
-
-### Development
-
-```bash
-npm install
-npm run lint
-npm run build
-npm test
+```yaml
+---
+theme: print
+parser: my-parser
+puppeteer: book
+---
 ```
 
-The integration tests need a display server on Linux containers. Use `xvfb-run npm test` in CI when no desktop display is available.
+## Frontmatter
+
+Use `numbering: 1-3` to number headings from level 1 through level 3. Header and footer items support `title`, `date`, `page`, or literal text. Each side has up to three items.
+
+```yaml
+---
+numbering: 1-3
+header:
+  - item: title
+    style: font-weight: bold
+  - item: date
+footer: ['', '', page]
+---
+```
+
+## Document Directives
+
+Use these HTML comments in Markdown:
+
+- `<!-- TOC -->` creates a table of contents for levels 1 through 6.
+- `<!-- TOC [2] -->` limits it to levels 1 through 2.
+- `<!-- TOC [2, 4] -->` includes levels 2 through 4.
+- `<!-- IGNORE-TOC -->` excludes the next heading from the table of contents.
+- `<!-- IGNORE-NUM -->` excludes the next heading from numbering.
+- `<!-- ID[custom-id] -->` gives the next heading an internal-link alias.
+- A line containing `---` creates a page break.
+
+Forma supports HTML, footnotes, task lists, image dimensions such as `![Alt](image.png =320x200)`, containers, automatic links, and Prism highlighting for common programming and configuration languages.
+
+## Images and Output Paths
+
+Relative images are resolved from the Markdown file. Paths beginning with `@/` are resolved from the workspace root. In `puppeteer.json`, `destination: "."` writes beside the source file; `destination: "@"` writes at the workspace root, and `destination: "@/exports"` writes below it.
