@@ -43,20 +43,16 @@ export function activate(context) {
         }
       }
     }),
-    vsc.commands.registerCommand('forma.initprojectconfig', () => {
+    vsc.commands.registerCommand('forma.initialization', () => {
       try {
-        console.log('forma.initprojectconfig triggered');
+        console.log('forma.initialization triggered');
         AppWsConfig.initialize();
       } catch (/** @type {unknown} */ err) {
         if (err instanceof Error) {
-          console.error('Error in forma.initprojectconfig:', err);
-          vsc.window.showErrorMessage(`forma.initprojectconfig error: ${err.message}`);
+          console.error('Error in forma.initialization:', err);
+          vsc.window.showErrorMessage(`forma.initialization error: ${err.message}`);
         }
       }
-    }),
-    vsc.commands.registerCommand('forma.copyAnchor', async (text) => {
-      await vsc.env.clipboard.writeText(text);
-      vsc.window.setStatusBarMessage(`Copied: ${text}`, 2000);
     }),
   );
 }

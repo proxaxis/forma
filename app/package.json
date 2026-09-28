@@ -3,7 +3,7 @@
   "displayName": "Forma: Build Markdown Document",
   "description": "Let's create documents in Markdown!",
   "publisher": "proxaxis",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
     "Visualization",
     "Other"
   ],
-    "capabilities": {
+  "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
       "description": "Forma requires a trusted workspace."
