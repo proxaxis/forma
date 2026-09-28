@@ -107,6 +107,12 @@ export class BrowserConfiguration extends BaseConfiguration {
       return this.cache.get('puppeteerConfig');
     }
 
+    if (!vsc.workspace.isTrusted) {
+      const config = JSON.parse(wsConfigTemplates.getByName('ws.puppeteer.json').content);
+      this.cache.set('puppeteerConfig', config);
+      return config;
+    }
+
     let content;
 
     if (this.fileUri) {

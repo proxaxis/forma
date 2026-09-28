@@ -1,3 +1,4 @@
+import vsc from 'vscode';
 import { wsConfigTemplates } from '@/assets/constants.js';
 import { BaseConfiguration } from '@/builder/configuration-base.js';
 
@@ -26,6 +27,12 @@ export class ParserConfiguration extends BaseConfiguration {
   async load() {
     if (this.cache.has('parserModule')) {
       return this.cache.get('parserModule');
+    }
+
+    if (!vsc.workspace.isTrusted) {
+      const parserModule = {};
+      this.cache.set('parserModule', parserModule);
+      return parserModule;
     }
     
     let moduleUrl;

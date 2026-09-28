@@ -15,15 +15,18 @@ export class AppExporter {
       void vsc.window.showWarningMessage('Open a Markdown document to export it.');
       return;
     }
+    if (!vsc.workspace.isTrusted) {
+      void vsc.window.showWarningMessage('PDF export is unavailable in an untrusted workspace.');
+      return;
+    }
     const builder = new Builder(vscTextDocument);
-    const config = await builder.buildConfig();
     const docBodyTemplate = await inlineLocalImages(await builder.buildBodyHTML());
     const docHeaderTemplate = await builder.buildHeaderHTML();
     const docFooterTemplate = await builder.buildFooterHTML();
-    const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = (await config.browser.loadConfig()) || {};
-    const browserExecutablePath = await config.browser.resolveExecutablePath();
+    const { browserArguments = [], destination = '.', ...puppeteerExportOptions } = (await builder.browser.loadConfig()) || {};
+    const browserExecutablePath = await builder.browser.resolveExecutablePath();
     const documentDirectory = path.dirname(vscTextDocument.uri.fsPath);
-    const outputDirectory = destination === '@' || destination.startsWith('@/') ? path.join(config.browser.vscWorkspaceRootUri?.fsPath ?? documentDirectory, destination.slice(destination === '@' ? 1 : 2)) : path.join(documentDirectory, destination);
+    const outputDirectory = destination === '@' || destination.startsWith('@/') ? path.join(builder.browser.vscWorkspaceRootUri?.fsPath ?? documentDirectory, destination.slice(destination === '@' ? 1 : 2)) : path.join(documentDirectory, destination);
     const docOutputPath = path.join(outputDirectory, `${path.basename(vscTextDocument.uri.fsPath, path.extname(vscTextDocument.uri.fsPath))}.pdf`);
     await mkdir(outputDirectory, { recursive: true });
 
@@ -49,7 +52,7 @@ export class AppExporter {
           ),
         );
       });
-      const exportStyleText = await config.theme.loadExport();
+      const exportStyleText = await builder.theme.loadExport();
       await page.addStyleTag({ content: exportStyleText });
       await page.evaluate(() => {
         /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.forma-preview-page-header, .forma-preview-page-footer')).forEach((element) => {

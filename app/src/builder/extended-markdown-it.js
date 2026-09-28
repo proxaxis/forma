@@ -85,7 +85,8 @@ export class ExtendedMarkdownIt extends MarkdownIt {
       const token = tokens[index];
       const sourceAttribute = token.attrGet('src');
       const resolvedSource = this.resolveImageUri?.(typeof sourceAttribute === 'string' ? sourceAttribute : null);
-      if (resolvedSource) token.attrSet('src', resolvedSource);
+      if (resolvedSource === null) return '';
+      token.attrSet('src', resolvedSource);
       token.attrSet('alt', self.renderInlineAsText(token.children ?? [], options, env));
       return self.renderToken(tokens, index, options);
     };
@@ -111,7 +112,7 @@ export class ExtendedMarkdownIt extends MarkdownIt {
   importMarkdownItPlugins() {
     this.use(xModuleResolver(xImsize))
       .use(xModuleResolver(xCustomBlock))
-      .use(xModuleResolver(xContainer), {
+      .use(xModuleResolver(xContainer), 'container', {
         /**
          * Validates the parameters for the container.
          * @param {string} params
@@ -127,13 +128,12 @@ export class ExtendedMarkdownIt extends MarkdownIt {
          * @returns {string} The HTML for the container.
          */
         render: (tokens, idx) => {
-          const match = tokens[idx].info.trim().match(/^([\w-]+)$/);
-          if (!match) {
-            return '';
-          }
-          const className = encodeURIComponent(match[1]);
-
           if (tokens[idx].nesting === 1) {
+            const match = tokens[idx].info.trim().match(/^([\w-]+)$/);
+            if (!match) {
+              return '';
+            }
+            const className = encodeURIComponent(match[1]);
             return `<div class="${className}">\n`;
           } else {
             return '</div>\n';

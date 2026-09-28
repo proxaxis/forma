@@ -1,5 +1,7 @@
-import { locale } from '@/assets/constants.js';
+import vsc from 'vscode';
+import { locale as defaultLocale } from '@/assets/constants.js';
 import { randomUUID as getRandomUUID } from 'node:crypto';
+import GithubSlugger from 'github-slugger';
 
 /**
  * @typedef {object} CustomParserModule
@@ -19,8 +21,6 @@ import { randomUUID as getRandomUUID } from 'node:crypto';
  * @returns {Promise<void>} - Processes the parsed Markdown tokens.
  */
 export async function runSystemHandleMarkdown(builder) {
-  const tokens = await builder.buildTokens();
-
   const tocRegex = /<!--\s*TOC(?:\s*\[\s*(\d+)(?:\s*,\s*(\d+))?\s*\])?\s*-->/;
   const ignoreRegex = /<!--\s*IGNORE-TOC\s*-->/;
   const ignoreNumberingRegex = /<!--\s*IGNORE-NUM\s*-->/;
@@ -42,8 +42,8 @@ export async function runSystemHandleMarkdown(builder) {
   let tocConfig = null;
 
   // --- 1. Scan tokens, collect metadata, and inject heading IDs. ---
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (let i = 0; i < builder.tokens.length; i++) {
+    const token = builder.tokens[i];
 
     // Do not evaluate Markdown-like comments inside code blocks.
     if (token.type === 'fence' || token.type === 'code_block') {
@@ -106,7 +106,7 @@ export async function runSystemHandleMarkdown(builder) {
     // 2. Process each heading_open token.
     if (token.type === 'heading_open') {
       const level = Number(token.tag.replace('h', ''));
-      const inlineToken = tokens[i + 1];
+      const inlineToken = builder.tokens[i + 1];
       const originalText = inlineToken ? inlineToken.content : '';
       let text = originalText;
       const uuid = getRandomUUID().replaceAll('-', '');
@@ -157,7 +157,7 @@ export async function runSystemHandleMarkdown(builder) {
       token.attrSet('id', uuid);
 
       // Register the normalized heading text as an automatic alias.
-      headlineIdAliasMap.set(builder.asHtmlSafeString(originalText), uuid);
+      headlineIdAliasMap.set(new GithubSlugger().slug(originalText), uuid);
 
       // Register an explicit alias when one was provided.
       if (pendingAlias) {
@@ -209,7 +209,7 @@ export async function runSystemHandleMarkdown(builder) {
   }
 
   // --- 3. Resolve internal-link aliases in inline tokens. ---
-  tokens.forEach((token) => {
+  builder.tokens.forEach((token) => {
     if (token.type !== 'inline' || !token.children) return;
 
     token.children.forEach((child) => {
@@ -258,7 +258,6 @@ export async function runSystemHandleFooterHTML(builder) {
  * @returns {Promise<string>} - The processed header or footer HTML content.
  */
 async function buildHeaderFooterHTML({ builder, isHeader = false, isFooter = false }) {
-  const config = await builder.buildConfig();
   const defaults = isHeader ? ['title', 'date'] : ['', '', 'page'];
   const type = isHeader ? 'header' : 'footer';
 
@@ -270,14 +269,14 @@ async function buildHeaderFooterHTML({ builder, isHeader = false, isFooter = fal
     let items = [];
     if (typeof raw === 'string') items = [{ item: raw.trim(), style: undefined }];
     else if (!raw || (typeof raw === 'object' && !Array.isArray(raw))) items = defaults.map((item) => ({ item, style: undefined }));
-    else if (Array.isArray(raw)) items = raw.map((val) => typeof val === 'string' ? { item: val.trim(), style: undefined } : val);
+    else if (Array.isArray(raw)) items = raw.map((val) => (typeof val === 'string' ? { item: val.trim(), style: undefined } : val));
 
     return items.filter((_, i) => i < 3);
   })();
 
   /** @type {string} */
   const injectionStyleText = directives
-    .map((d, i) => d.style ? `.forma-document-${type} span[data-forma-document-${type}-item-index="${i}"] { ${d.style}; }` : undefined)
+    .map((d, i) => (d.style ? `.forma-document-${type} span[data-forma-document-${type}-item-index="${i}"] { ${d.style}; }` : undefined))
     .filter(Boolean)
     .join(' ');
 
@@ -286,11 +285,10 @@ async function buildHeaderFooterHTML({ builder, isHeader = false, isFooter = fal
     const itemName = (directives[i].item ?? directives[i].value ?? '').trim();
     switch (itemName.toLowerCase()) {
       case 'title':
-        const tokens = await builder.buildTokens();
-        const headlineIndex = tokens.findIndex((token) => token.type === 'heading_open' && token.tag === 'h1');
+        const headlineIndex = builder.tokens.findIndex((token) => token.type === 'heading_open' && token.tag === 'h1');
 
-        if (headlineIndex > -1 && tokens[headlineIndex + 1]?.content) {
-          elements.push(`<span data-forma-document-header-item="title" data-forma-document-header-item-index="${i}">${tokens[headlineIndex + 1].content}</span>`);
+        if (headlineIndex > -1 && builder.tokens[headlineIndex + 1]?.content) {
+          elements.push(`<span data-forma-document-header-item="title" data-forma-document-header-item-index="${i}">${builder.tokens[headlineIndex + 1].content}</span>`);
           break;
         }
 
@@ -298,7 +296,8 @@ async function buildHeaderFooterHTML({ builder, isHeader = false, isFooter = fal
         break;
 
       case 'date':
-        const dateText = new Date().toLocaleDateString(locale, { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-');
+        const configuredLocale = vsc.workspace.getConfiguration('forma', builder.vscTextDocument.uri).get('locale', defaultLocale);
+        const dateText = new Date().toLocaleDateString(configuredLocale || defaultLocale, { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-');
         elements.push(`<span data-forma-document-header-item="date" data-forma-document-header-item-index="${i}">${dateText}</span>`);
         break;
 
@@ -313,10 +312,10 @@ async function buildHeaderFooterHTML({ builder, isHeader = false, isFooter = fal
 
   return (isHeader ? builder.rawHeaderHTMLText : builder.rawFooterHTMLText)
     .replace('___NONCE___', builder.nonce)
-    .replace('___STYLE_FONT_SIZE___', (await config.browser.loadConfig())?.defaultHeaderFooterFont?.size ?? '12px')
-    .replace('___STYLE_FONT_COLOR___', (await config.browser.loadConfig())?.defaultHeaderFooterFont?.color ?? '#555')
-    .replace('___STYLE_MARGIN_LEFT___', (await config.browser.loadConfig())?.margin?.left ?? '0px')
-    .replace('___STYLE_MARGIN_RIGHT___', (await config.browser.loadConfig())?.margin?.right ?? '0px')
+    .replace('___STYLE_FONT_SIZE___', (await builder.browser.loadConfig())?.defaultHeaderFooterFont?.size ?? '12px')
+    .replace('___STYLE_FONT_COLOR___', (await builder.browser.loadConfig())?.defaultHeaderFooterFont?.color ?? '#555')
+    .replace('___STYLE_MARGIN_LEFT___', (await builder.browser.loadConfig())?.margin?.left ?? '0px')
+    .replace('___STYLE_MARGIN_RIGHT___', (await builder.browser.loadConfig())?.margin?.right ?? '0px')
     .replace('___STYLE_INJECTION___', String(injectionStyleText).replace(/<\/style/gi, '<\\/style'))
     .replace('___CONTENT___', elements.join(''));
 }

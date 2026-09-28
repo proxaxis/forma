@@ -23,6 +23,15 @@ export function activate(context) {
         }
       }
     }),
+    vsc.commands.registerCommand('forma.preview.zoomIn', () => {
+      AppPreviewPanel.current?.setZoom(AppPreviewPanel.current.previewZoom + AppPreviewPanel.previewZoomStep);
+    }),
+    vsc.commands.registerCommand('forma.preview.zoomOut', () => {
+      AppPreviewPanel.current?.setZoom(AppPreviewPanel.current.previewZoom - AppPreviewPanel.previewZoomStep);
+    }),
+    vsc.commands.registerCommand('forma.preview.resetZoom', () => {
+      AppPreviewPanel.current?.setZoom(1);
+    }),
     vsc.commands.registerCommand('forma.export', () => {
       try {
         console.log('forma.export triggered');

@@ -1,7 +1,6 @@
 import grMatter from 'gray-matter';
 import { randomBytes as getRandomBytes } from 'node:crypto';
 import vsc from 'vscode';
-import GithubSlugger from 'github-slugger';
 import { htmlBuilderTemplates } from '@/assets/constants.js';
 import { ExtendedMarkdownIt } from '@/builder/extended-markdown-it.js';
 import { ThemeConfiguration } from '@/builder/configuration-theme.js';
@@ -17,10 +16,10 @@ export class Builder {
   constructor(vscTextDocument) {
     this.vscTextDocument = vscTextDocument;
     this.xMarkdownInstance = xMarkdownInstance;
-    this.slugger = new GithubSlugger();
     this.cache = new Map();
   }
 
+  // #region Getters and Setters
   get rawMarkdownText() {
     if (this.cache.has('rawMarkdownText')) return this.cache.get('rawMarkdownText');
 
@@ -32,7 +31,7 @@ export class Builder {
   get rawHTMLText() {
     if (this.cache.has('rawHTMLText')) return this.cache.get('rawHTMLText');
 
-    const html = this.renderTokens();
+    const html = this.render();
     this.cache.set('rawHTMLText', html);
     return html;
   }
@@ -51,6 +50,7 @@ export class Builder {
     this.cache.set('rawHeaderHTMLText', template);
     return template;
   }
+
   get rawFooterHTMLText() {
     if (this.cache.has('rawFooterHTMLText')) return this.cache.get('rawFooterHTMLText');
     const template = htmlBuilderTemplates.find((template) => template.name === 'template.footer.html')?.content ?? '';
@@ -64,6 +64,66 @@ export class Builder {
     const nonce = getRandomBytes(16).toString('base64');
     this.cache.set('nonce', nonce);
     return nonce;
+  }
+
+  get theme() {
+    if (this.cache.has('theme')) return this.cache.get('theme');
+
+    const theme = new ThemeConfiguration(this.vscTextDocument.uri, this.frontmatter.theme);
+    this.cache.set('theme', theme);
+    return theme;
+  }
+
+  get parser() {
+    if (this.cache.has('parser')) return this.cache.get('parser');
+
+    const parser = new ParserConfiguration(this.vscTextDocument.uri, this.frontmatter.parser);
+    this.cache.set('parser', parser);
+    return parser;
+  }
+
+  get browser() {
+    if (this.cache.has('browser')) return this.cache.get('browser');
+
+    const browser = new BrowserConfiguration(this.vscTextDocument.uri, this.frontmatter.browser);
+    this.cache.set('browser', browser);
+    return browser;
+  }
+
+  /** @type {import('markdown-it').Token[]} */
+  get tokens() {
+    if (this.cache.has('tokens')) return this.cache.get('tokens');
+
+    const tokens = this.xMarkdownInstance.parse(this.rawMarkdownText, {});
+    this.cache.set('tokens', tokens);
+    return tokens;
+  }
+
+  /** @type {Map<string, string>} */
+  get htmlStyleVariables() {
+    if (this.cache.has('htmlStyleVariables')) return this.cache.get('htmlStyleVariables');
+
+    const map = new Map();
+    this.cache.set('htmlStyleVariables', map);
+    return map;
+  }
+
+  /** @type {Map<string, [string, string][]>} */
+  get htmlInjectionStyles() {
+    if (this.cache.has('htmlInjectionStyles')) return this.cache.get('htmlInjectionStyles');
+
+    const map = new Map();
+    this.cache.set('htmlInjectionStyles', map);
+    return map;
+  }
+
+  /** @type {Set<string>} */
+  get htmlInjectionScripts() {
+    if (this.cache.has('htmlInjectionScripts')) return this.cache.get('htmlInjectionScripts');
+
+    const map = new Set();
+    this.cache.set('htmlInjectionScripts', map);
+    return map;
   }
 
   set rawMarkdownText(value) {
@@ -81,80 +141,40 @@ export class Builder {
   set rawFooterHTMLText(value) {
     this.cache.set('rawFooterHTMLText', value);
   }
-
-  /**
-   * Generate an HTML-safe slug (GFM-based) from the given text.
-   * @param {string} text - The text to slugify.
-   * @returns {string} - The generated slug.
-   */
-  asHtmlSafeString(text) {
-    return this.slugger.slug(text);
+  set nonce(_) {
+    throw new Error('Nonce is read-only and cannot be set.');
   }
-
-  /**
-   * Build the application configuration object.
-   * @returns {Promise<{ theme: ThemeConfiguration, parser: ParserConfiguration, browser: BrowserConfiguration }>}
-   */
-  async buildConfig() {
-    if (this.cache.has('config')) return this.cache.get('config');
-
-    const vscTextDocumentUri = this.vscTextDocument.uri;
-    const config = {
-      theme: new ThemeConfiguration(vscTextDocumentUri, this.frontmatter.theme),
-      parser: new ParserConfiguration(vscTextDocumentUri, this.frontmatter.parser),
-      browser: new BrowserConfiguration(vscTextDocumentUri, this.frontmatter.puppeteer),
-    };
-    this.cache.set('config', config);
-    return config;
+  set theme(_) {
+    throw new Error('Theme is read-only and cannot be set.');
   }
-
-  /**
-   * Build the Markdown tokens provided by the markdown-it from the raw Markdown text.
-   * @returns {Promise<import('markdown-it').Token[]>} - The generated Markdown tokens.
-   */
-  async buildTokens() {
-    if (this.cache.has('tokens')) return this.cache.get('tokens');
-
-    const tokens = this.xMarkdownInstance.parse(this.rawMarkdownText, {});
-    this.cache.set('tokens', tokens);
-    return tokens;
+  set parser(_) {
+    throw new Error('Parser is read-only and cannot be set.');
   }
+  set browser(_) {
+    throw new Error('Browser is read-only and cannot be set.');
+  }
+  set tokens(_) {
+    throw new Error('Tokens are read-only and cannot be set.');
+  }
+  set htmlStyleVariables(_) {
+    throw new Error('HTML style variables are read-only and cannot be set. Use .set() to modify individual variables.');
+  }
+  set htmlInjectionStyles(_) {
+    throw new Error('HTML injection styles are read-only and cannot be set. Use .set() to modify individual styles.');
+  }
+  set htmlInjectionScripts(_) {
+    throw new Error('HTML injection scripts are read-only and cannot be set. Use .add() to add new scripts.');
+  }
+  // #endregion
 
   /**
-   * Render the Markdown tokens after all token handlers have processed them.
+   * Render the Markdown from the processed tokens after all token handlers have processed them.
    * @returns {string} - The generated HTML.
    */
-  renderTokens() {
+  render() {
     const tokens = this.cache.get('tokens') ?? this.xMarkdownInstance.parse(this.rawMarkdownText, {});
     this.cache.set('tokens', tokens);
     return this.xMarkdownInstance.renderer.render(tokens, this.xMarkdownInstance.options, {});
-  }
-
-  /**
-   * Build the HTML style variables for the preview.
-   * @param {string[][]} vars - An array of key-value pairs to be included in the style variables. e.g., [['--my-variable', 'value']].
-   * @returns {Promise<string>} - The generated HTML style variables.
-   */
-  async buildHtmlStyleVariables(vars = []) {
-    const map = new Map();
-    const { browser } = await this.buildConfig();
-    const browserConfig = await browser.loadConfig();
-    map.set('--forma-page-margin-top', typeof browserConfig.margin.top === 'string' ? browserConfig.margin.top : '18mm');
-    map.set('--forma-page-margin-right', typeof browserConfig.margin.right === 'string' ? browserConfig.margin.right : '18mm');
-    map.set('--forma-page-margin-bottom', typeof browserConfig.margin.bottom === 'string' ? browserConfig.margin.bottom : '18mm');
-    map.set('--forma-page-margin-left', typeof browserConfig.margin.left === 'string' ? browserConfig.margin.left : '18mm');
-    map.set('--forma-page-width', typeof browserConfig.width === 'string' ? browserConfig.width : '18mm');
-    map.set('--forma-page-height', typeof browserConfig.height === 'string' ? browserConfig.height : '18mm');
-    map.set('--forma-page-format', typeof browserConfig.format === 'string' ? browserConfig.format : 'A4');
-    map.set('--forma-page-scale', typeof browserConfig.scale === 'number' ? browserConfig.scale : 1.0);
-
-    for (const [key, value] of vars) {
-      map.set(key, value);
-    }
-
-    return Array.from(map.entries())
-      .map(([key, value]) => `${key}: ${value};`)
-      .join(' ');
   }
 
   /**
@@ -162,8 +182,7 @@ export class Builder {
    * @returns {Promise<string>}
    */
   async buildPaginatedHTML() {
-    const config = await this.buildConfig();
-    const browser = await config.browser.getBrowser();
+    const browser = await this.browser.getBrowser();
 
     try {
       const page = await browser.newPage();
@@ -249,25 +268,25 @@ export class Builder {
   /**
    * Generate the HTML body content from the Markdown source.
    * @param {Object} [param] - The data to fill the template with.
-   * @param {string} [param.csp] - Content Security Policy source for the HTML.
+   * @param {string} [param.vscCspRource] - Content Security Policy source provided by the VSCode WebviewPanel.
    * @param {(uri: vsc.Uri) => string} [param.resolveResourceUri] - Converts local resource URIs for the target renderer.
    * @returns {Promise<string>} - The generated HTML body content.
    */
-  async buildBodyHTML({ csp: cspSource = 'file:', resolveResourceUri = (vscUri) => vscUri.toString() } = {}) {
-    const config = await this.buildConfig();
+  async buildBodyHTML({ vscCspRource = 'file:', resolveResourceUri = (vscUri) => vscUri.toString() } = {}) {
+    this.xMarkdownInstance.options.html = vsc.workspace.isTrusted;
 
     /**
-     * @param {string | null} source
-     * @returns {string | null}
+     * Resolve the URI of an image.
+     * @param {string | null} source - The source URI of the image.
+     * @returns {string | null} - The resolved URI of the image, or null if it cannot be resolved.
      */
     this.xMarkdownInstance.resolveImageUri = (source) => {
-      if (!source || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(source) || source.startsWith('#')) return source;
+      if (!source || source.startsWith('#')) return source;
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(source)) return vsc.workspace.isTrusted ? source : null;
 
       const sourceUri = vsc.Uri.parse(source);
-      const workspaceRootUri = config.browser.vscWorkspaceRootUri;
-      const baseUri = source === '@' || source.startsWith('@/')
-        ? workspaceRootUri
-        : vsc.Uri.joinPath(this.vscTextDocument.uri, '..');
+      const workspaceRootUri = this.browser.vscWorkspaceRootUri;
+      const baseUri = source === '@' || source.startsWith('@/') ? workspaceRootUri : vsc.Uri.joinPath(this.vscTextDocument.uri, '..');
       if (!baseUri) return source;
 
       const imagePath = source === '@' ? '' : source.startsWith('@/') ? source.slice(2) : sourceUri.path;
@@ -275,14 +294,21 @@ export class Builder {
       return resolveResourceUri(imageUri);
     };
 
+    // Generate the raw HTML content from the Markdown source, applying user and system hooks.
     this.rawMarkdownText = await runUserHandleMarkdown(this);
-    await runSystemHandleMarkdown(this);
-    this.rawHTMLText = this.renderTokens();
+    await runSystemHandleMarkdown(this); // This function modifies the tokens in place, so we don't need to capture its return value.
+    this.rawHTMLText = this.render();
     this.rawHTMLText = await runUserHandleHTML(this);
     this.rawHTMLText = await runSystemHandleHTML(this);
 
+    // Add the document nonce to style tags supplied by Markdown or parser hooks
+    this.rawHTMLText = this.rawHTMLText.replace(/<style\b([^>]*)>/gi, (/** @type {string} */ _match, /** @type {string} */ attributes) => {
+      const attributesWithoutNonce = attributes.replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/i, '');
+      return `<style${attributesWithoutNonce} nonce="${this.nonce}">`;
+    });
+
     // If the print theme is enabled, wrap the content with header and footer for print theme.
-    if (config.theme.usePrintTheme) {
+    if (this.theme.usePrintTheme) {
       this.rawHeaderHTMLText = await this.buildHeaderHTML();
       this.rawFooterHTMLText = await this.buildFooterHTML();
       // The pagination step clones the header and footer onto each page.
@@ -292,37 +318,62 @@ export class Builder {
         <div class="forma-preview-page-footer">${this.rawFooterHTMLText}</div>`;
     }
 
-    const themeCssText = await config.theme.load();
+    await this.theme.load(); // Preload the theme CSS and other resources, if applicable.
 
     // Determine the base href for relative paths in the HTML.
     const baseHref = (() => {
-      if (!config.theme.fileUri) return '';
-      const href = vsc.Uri.joinPath(config.theme.fileUri, '..').toString();
+      if (!vsc.workspace.isTrusted || !this.theme.fileUri) return '';
+      const href = vsc.Uri.joinPath(this.theme.fileUri, '..').toString();
       return href.endsWith('/') ? href : `${href}/`;
     })();
 
     // Construct the Content Security Policy (CSP) string.
-    const csp = (() => {
+    const cspSourceText = (() => {
       const map = new Map();
       map.set('default-src', ["'none'"]);
-      map.set('img-src', [cspSource, 'https:', 'data:']);
-      map.set('media-src', [cspSource, 'https:', 'data:']);
-      map.set('link-src', [cspSource, 'https:', 'data:']);
-      map.set('script-src', [cspSource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
-      map.set('font-src', [cspSource, 'https:', 'data:']);
-      map.set('style-src', [cspSource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
+      map.set('img-src', vsc.workspace.isTrusted ? [vscCspRource, 'https:', 'data:'] : [vscCspRource, 'data:']);
+      map.set('media-src', vsc.workspace.isTrusted ? [vscCspRource, 'https:', 'data:'] : [vscCspRource, 'data:']);
+      map.set('link-src', ['https://cdnjs.cloudflare.com', 'data:']);
+      map.set('script-src', [vscCspRource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
+      map.set('font-src', vsc.workspace.isTrusted ? [vscCspRource, 'https:', 'data:'] : [vscCspRource, 'data:']);
+      map.set('style-src', [vscCspRource, 'https://cdnjs.cloudflare.com', 'data:', `'nonce-${this.nonce}'`]);
       return Array.from(map.entries())
         .map(([key, values]) => `${key} ${values.join(' ')}`)
         .join('; ');
     })();
 
-    const cssVariablesDataUri = getStyleSheetDataUri(`:root { ${await this.buildHtmlStyleVariables()} }`);
-    const themeCssDataUri = config.theme.fileUri && /\.css$/i.test(config.theme.fileUri.path) ? resolveResourceUri(config.theme.fileUri) : getStyleSheetDataUri(themeCssText);
+    const htmlStyleVariablesDataUri = await (async () => {
+      const config = await this.browser.loadConfig();
+      this.htmlStyleVariables.set('--forma-page-margin-top', typeof config.margin.top === 'string' ? config.margin.top : '18mm');
+      this.htmlStyleVariables.set('--forma-page-margin-right', typeof config.margin.right === 'string' ? config.margin.right : '18mm');
+      this.htmlStyleVariables.set('--forma-page-margin-bottom', typeof config.margin.bottom === 'string' ? config.margin.bottom : '18mm');
+      this.htmlStyleVariables.set('--forma-page-margin-left', typeof config.margin.left === 'string' ? config.margin.left : '18mm');
+      this.htmlStyleVariables.set('--forma-page-width', typeof config.width === 'string' ? config.width : '18mm');
+      this.htmlStyleVariables.set('--forma-page-height', typeof config.height === 'string' ? config.height : '18mm');
+      this.htmlStyleVariables.set('--forma-page-format', typeof config.format === 'string' ? config.format : 'A4');
+      this.htmlStyleVariables.set('--forma-page-scale', typeof config.scale === 'number' ? config.scale : 1.0);
+
+      const vars = Array.from(this.htmlStyleVariables.entries())
+        .map(([key, value]) => `${key}: ${value};`)
+        .join(' ');
+      return getStyleSheetDataUri(`:root { ${vars} }`);
+    })();
+
+    const htmlInjectionStylesDataUri = (() => {
+      const styles = Array.from(this.htmlInjectionStyles.entries())
+        .map(([selector, kvs]) => {
+          const declarations = kvs.map(([key, value]) => `${key}: ${value};`).join(' ');
+          return `${selector} { ${declarations} }`;
+        })
+        .join(' ');
+      return getStyleSheetDataUri(styles);
+    })();
+
+    const themeCssDataUri = vsc.workspace.isTrusted && this.theme.fileUri && /\.css$/i.test(this.theme.fileUri.path) ? resolveResourceUri(this.theme.fileUri) : getStyleSheetDataUri(await this.theme.load());
 
     const bodyCustomDataAttrs = (() => {
       const map = new Map();
-      map.set('data-injected-by', 'forma');
-      map.set('data-forma-theme-name', config.theme.themeName);
+      map.set('data-forma-theme-name', this.theme.themeName);
       return Array.from(map.entries())
         .map(([key, value]) => `${key}="${this.xMarkdownInstance.utils.escapeHtml(value)}"`)
         .join(' ');
@@ -330,16 +381,33 @@ export class Builder {
 
     const bodyClassList = (() => {
       const classArr = [];
-      if (config.theme.usePrintTheme) classArr.push('forma-preview-pages');
+      if (this.theme.usePrintTheme) classArr.push('forma-preview-pages');
       return classArr.join(' ');
     })();
 
-    this.rawHTMLText = fillHtmlTemplate({ bodyText: this.rawHTMLText, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs });
+    const htmlInjectionScriptsDataUri = (() => {
+      const scripts = Array.from(this.htmlInjectionScripts).join(' ');
+      return getScriptDataUri(scripts);
+    })();
 
-    if (config.theme.usePrintTheme) {
+    const fillHtmlTemplateArgs = {
+      body: this.rawHTMLText,
+      base: baseHref,
+      csp: cspSourceText,
+      vars: htmlStyleVariablesDataUri,
+      theme: themeCssDataUri,
+      classList: bodyClassList,
+      attrs: bodyCustomDataAttrs,
+      customCss: htmlInjectionStylesDataUri,
+      scripts: htmlInjectionScriptsDataUri,
+    };
+
+    this.rawHTMLText = fillHtmlTemplate(fillHtmlTemplateArgs);
+
+    if (this.theme.usePrintTheme) {
       try {
         const bodyContent = await this.buildPaginatedHTML();
-        this.rawHTMLText = fillHtmlTemplate({ bodyText: bodyContent, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs });
+        this.rawHTMLText = fillHtmlTemplate({ ...fillHtmlTemplateArgs, body: bodyContent });
       } catch {
         // Keep the unpaginated preview when Chromium is unavailable.
       }
@@ -379,25 +447,38 @@ function getStyleSheetDataUri(content) {
 }
 
 /**
+ * Converts JavaScript content to a data URI.
+ * @param {string} content - The JavaScript content.
+ * @returns {string} - The data URI.
+ */
+function getScriptDataUri(content) {
+  return `data:text/javascript;charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+/**
  * Fills an HTML template with the provided data.
  * @param {Object} param - The data to fill the template with.
- * @param {string} param.bodyText - The text to insert into the body of the template.
- * @param {string} param.baseHref - The base href to insert into the template.
- * @param {string} param.csp - The Content Security Policy to insert into the template.
- * @param {string} param.cssVariablesDataUri - The data URI for the CSS variables to insert into the template.
- * @param {string} param.themeCssDataUri - The data URI for the theme CSS to insert into the template.
- * @param {string} param.bodyClassList - The class list to insert into the body of the template.
- * @param {string} param.bodyCustomDataAttrs - The custom data attributes to insert into the body of the template.
+ * @param {string} param.body - The HTML content.
+ * @param {string} param.base - The base href.
+ * @param {string} param.csp - The Content Security Policy.
+ * @param {string} param.vars - The data URI for the CSS variables.
+ * @param {string} param.theme - The data URI for the theme CSS.
+ * @param {string} param.classList - The class list to insert into the body of the template.
+ * @param {string} param.attrs - The custom data attributes to insert into the body of the template.
+ * @param {string} param.customCss - The data URI for the custom CSS.
+ * @param {string} param.scripts - The data URI for the HTML injection scripts.
  * @returns {string} - The filled HTML template.
  */
-function fillHtmlTemplate({ bodyText, baseHref, csp, cssVariablesDataUri, themeCssDataUri, bodyClassList, bodyCustomDataAttrs }) {
+function fillHtmlTemplate({ body, base, csp, vars, theme, customCss, classList, attrs, scripts }) {
   const template = htmlBuilderTemplates.find((template) => template.name === 'template.skeleton.html')?.content ?? '';
   return template
-    .replace('___BASE_HREF___', xMarkdownInstance.utils.escapeHtml(baseHref))
+    .replace('___BASE_HREF___', xMarkdownInstance.utils.escapeHtml(base))
     .replace('___CSP___', xMarkdownInstance.utils.escapeHtml(csp))
-    .replace('___CSS_VARIABLES_DATA_URI___', xMarkdownInstance.utils.escapeHtml(cssVariablesDataUri))
-    .replace('___THEME_CSS_DATA_URI___', xMarkdownInstance.utils.escapeHtml(themeCssDataUri))
-    .replace('___BODY_CLASS___', bodyClassList)
-    .replace('___BODY_CUSTOM_DATA_ATTRS___', bodyCustomDataAttrs)
-    .replace('___RAW_HTML___', bodyText);
+    .replace('___CSS_VARIABLES_DATA_URI___', xMarkdownInstance.utils.escapeHtml(vars))
+    .replace('___THEME_CSS_DATA_URI___', xMarkdownInstance.utils.escapeHtml(theme))
+    .replace('___CUSTOM_CSS_DATA_URI___', xMarkdownInstance.utils.escapeHtml(customCss))
+    .replace('___BODY_CLASS___', classList)
+    .replace('___BODY_CUSTOM_DATA_ATTRS___', attrs)
+    .replace('___INJECTION_SCRIPTS___', scripts)
+    .replace('___RAW_HTML___', body);
 }

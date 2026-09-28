@@ -32,6 +32,10 @@ export class ThemeConfiguration extends BaseConfiguration {
    * @returns {Promise<string>} The loaded stylesheet content, either as CSS or the original content if not SCSS.
    */
   async load() {
+    if (this.cache.has('stylesheet')) {
+      return this.cache.get('stylesheet');
+    }
+    
     const fallbackTemplate = this.usePrintTheme ? wsConfigTemplates.getByName('ws.print.scss') : wsConfigTemplates.getByName('ws.default.scss');
     return this.loadStylesheet(this.fileUri, fallbackTemplate?.content ?? '');
   }
@@ -63,7 +67,7 @@ export class ThemeConfiguration extends BaseConfiguration {
     let fileUrl;
 
     // Load the content from the specified file URI if available
-    if (fileUri) {
+    if (fileUri && vsc.workspace.isTrusted) {
       const fileBuffer = await vsc.workspace.fs.readFile(fileUri);
       content = new TextDecoder().decode(fileBuffer);
       isScss = /\.(scss|sass)$/i.test(fileUri.path);

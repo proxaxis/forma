@@ -21,6 +21,12 @@
     "Visualization",
     "Other"
   ],
+    "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Forma requires a trusted workspace."
+    }
+  },
   "main": "./dist/extension.cjs",
   "contributes": {
     "commands": [
@@ -37,6 +43,18 @@
       {
         "command": "forma.initialization",
         "title": "Forma: Initialize Project Config"
+      },
+      {
+        "command": "forma.preview.zoomIn",
+        "title": "Forma Preview: Zoom In (Make it bigger)"
+      },
+      {
+        "command": "forma.preview.zoomOut",
+        "title": "Forma Preview: Zoom Out (Make it smaller)"
+      },
+      {
+        "command": "forma.preview.resetZoom",
+        "title": "Forma Preview: Reset Zoom"
       }
     ],
     "menus": {
@@ -50,6 +68,23 @@
           "command": "forma.export",
           "when": "resourceLangId == markdown",
           "group": "navigation@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "forma.preview.zoomIn",
+          "when": "webviewId == forma.preview",
+          "group": "navigation@1"
+        },
+        {
+          "command": "forma.preview.zoomOut",
+          "when": "webviewId == forma.preview",
+          "group": "navigation@2"
+        },
+        {
+          "command": "forma.preview.resetZoom",
+          "when": "webviewId == forma.preview",
+          "group": "navigation@3"
         }
       ]
     },
@@ -86,7 +121,12 @@
             "puppeteerRunnerPath": ""
           }
         },
-        "forma.common.useAutoOpenPDF": {
+        "forma.locale": {
+          "description": "Locale used when formatting dates in Forma documents.",
+          "type": "string",
+          "default": "ja-JP"
+        },
+        "forma.export.useAutoOpenPDF": {
           "description": "Open the exported PDF after it is created.",
           "type": "boolean",
           "default": false
